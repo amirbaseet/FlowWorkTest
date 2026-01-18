@@ -19,13 +19,16 @@ import {
   getSlotCandidates,
   useGapDetection,
   useCalendarIntegration,
-  useWorkspaceModals
+  useWorkspaceModals,
+  useWorkspaceFilters
 } from '@/hooks/workspace';
 
 // UI Components
 import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import DateNavigator from '@/components/workspace/DateNavigator';
 import AbsenceProtocolCard from '@/components/workspace/AbsenceProtocolCard';
+import FilterBar from '@/components/workspace/FilterBar';
+import FilterSummary from '@/components/workspace/FilterSummary';
 import ModeSelectionPanel from '@/components/workspace/ModeSelectionPanel';
 import TeacherStatusLegend from '@/components/workspace/TeacherStatusLegend';
 import DistributionTable from '@/components/workspace/DistributionTable';
@@ -141,6 +144,16 @@ const Workspace: React.FC<WorkspaceProps> = ({
   });
   
   const modals = useWorkspaceModals();
+
+  const workspaceFilters = useWorkspaceFilters({
+    lessons,
+    employees,
+    absences,
+    assignments: manualAssignments.assignments,
+    substitutionLogs,
+    viewDate: workspaceView.viewDate,
+    dayName: workspaceView.selectedDay
+  });
 
   // ==========================================================================
   // LOCAL STATE
@@ -267,6 +280,38 @@ const Workspace: React.FC<WorkspaceProps> = ({
           />
         ) : (
           <>
+            <FilterBar
+              employees={employees}
+              onSearchChange={(teacherId) => {
+                workspaceFilters.setFilters({
+                  ...workspaceFilters.filters,
+                  searchTeacherId: teacherId
+                });
+              }}
+              onFilterChange={workspaceFilters.setFilters}
+              currentFilters={workspaceFilters.filters}
+            />
+
+            {workspaceFilters.hasActiveFilters && (
+              <FilterSummary
+                filters={workspaceFilters.filters}
+                resultCount={workspaceFilters.filteredLessons.length}
+                teacherName={
+                  workspaceFilters.filters.searchTeacherId !== null
+                    ? employees.find(e => e.id === workspaceFilters.filters.searchTeacherId)?.name
+                    : undefined
+                }
+                onClear={() => {
+                  workspaceFilters.setFilters({
+                    showAbsencesOnly: false,
+                    showCoveredOnly: false,
+                    showUncoveredOnly: false,
+                    searchTeacherId: null
+                  });
+                }}
+              />
+            )}
+
             <ModeSelectionPanel
               selectedMode={workspaceMode.selectedMode}
               confirmedModes={workspaceMode.confirmedModes}
@@ -302,6 +347,8 @@ const Workspace: React.FC<WorkspaceProps> = ({
                   onToggleClass={workspaceMode.toggleClass}
                   onTogglePeriod={workspaceMode.togglePeriod}
                   onLessonClick={manualAssignments.handleLessonClick}
+                  isSlotVisible={workspaceFilters.isSlotVisible}
+                  hasActiveFilters={workspaceFilters.hasActiveFilters}
                 />
               </div>
 

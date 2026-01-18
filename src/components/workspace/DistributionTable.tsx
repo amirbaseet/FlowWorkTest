@@ -32,6 +32,8 @@ interface DistributionTableProps {
   onToggleClass: (classId: string) => void;
   onTogglePeriod: (period: number) => void;
   onLessonClick: (lesson: Lesson, className: string) => void;
+  isSlotVisible?: (classId: string, period: number) => boolean;
+  hasActiveFilters?: boolean;
 }
 
 /**
@@ -54,7 +56,9 @@ const DistributionTable: React.FC<DistributionTableProps> = ({
   dayName,
   onToggleClass,
   onTogglePeriod,
-  onLessonClick
+  onLessonClick,
+  isSlotVisible,
+  hasActiveFilters
 }) => {
   const normDay = normalizeArabic(dayName);
 
@@ -149,6 +153,25 @@ const DistributionTable: React.FC<DistributionTableProps> = ({
                   selectedClasses.includes(cls.id) &&
                   selectedPeriods.includes(period);
 
+                // Check if slot is visible with filters
+                const isVisible = isSlotVisible ? isSlotVisible(cls.id, period) : true;
+
+                // If filtered out, dim the cell
+                if (hasActiveFilters && !isVisible) {
+                  return (
+                    <td
+                      key={slotKey}
+                      className="p-1 border border-slate-200 bg-gray-100 opacity-30"
+                    >
+                      {lesson && (
+                        <div className="text-[8px] text-gray-400 truncate">
+                          {getCompactSubjectLabel(lesson.subject).text}
+                        </div>
+                      )}
+                    </td>
+                  );
+                }
+
                 // If no lesson, show empty cell
                 if (!lesson) {
                   return (
@@ -218,9 +241,8 @@ const DistributionTable: React.FC<DistributionTableProps> = ({
                   <td
                     key={slotKey}
                     onClick={(e) => {
-                      if (e.shiftKey) {
-                        onLessonClick(lesson, cls.name);
-                      }
+                      // Regular click opens teacher selection popup
+                      onLessonClick(lesson, cls.name);
                     }}
                     className={`
                       relative p-1 border cursor-pointer transition-all

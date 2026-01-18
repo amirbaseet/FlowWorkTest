@@ -23,3 +23,6 @@ export type { UseCalendarIntegrationProps, UseCalendarIntegrationReturn } from '
 
 export { useWorkspaceModals } from './useWorkspaceModals';
 export type { UseWorkspaceModalsReturn } from './useWorkspaceModals';
+
+export { useWorkspaceFilters } from './useWorkspaceFilters';
+export type { FilterState } from './useWorkspaceFilters';
