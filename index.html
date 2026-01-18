@@ -1,0 +1,79 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Madrasati - School System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --slate-dark: #020617;
+        --graphite: #0f172a;
+        --indigo-glow: rgba(99, 102, 241, 0.2);
+      }
+      
+      body {
+        font-family: 'Tajawal', sans-serif;
+        background-color: var(--slate-dark);
+        color: #f1f5f9;
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-size: 13px; /* Base size reduction */
+      }
+
+      /* Ultra-Slim Glassmorphism */
+      .premium-glass {
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .protocol-ruler {
+        background: rgba(15, 23, 42, 0.8);
+        backdrop-filter: blur(15px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .btn-mode {
+        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .glow-indigo { box-shadow: 0 0 30px -10px rgba(99, 102, 241, 0.5); }
+      .glow-emerald { box-shadow: 0 0 30px -10px rgba(16, 185, 129, 0.5); }
+
+      .custom-scrollbar::-webkit-scrollbar { width: 3px; height: 3px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 20px; }
+
+      @keyframes slide-down {
+        from { transform: translateY(-20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      .animate-slide-down { animation: slide-down 0.5s ease-out; }
+      
+      /* Utilities for small text readability */
+      .text-xxs { font-size: 0.65rem; line-height: 1rem; }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.561.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
+    "recharts": "https://esm.sh/recharts@^3.6.0",
+    "xlsx": "https://esm.sh/xlsx@0.18.5"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="custom-scrollbar text-slate-800">
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
