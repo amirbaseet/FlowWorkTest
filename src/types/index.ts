@@ -226,6 +226,23 @@ export interface SubstitutionLog {
   };
 }
 
+// Lesson color scheme for visual indicators
+export interface LessonColorScheme {
+  bg: string;
+  border: string;
+  text: string;
+  badge?: string;
+  badgeBg?: string;
+}
+
+// Coverage status for absence tracking
+export interface CoverageStatus {
+  status: 'normal' | 'absent-covered' | 'absent-uncovered';
+  icon: string;
+  color: string;
+  label: string;
+}
+
 // NEW: Override Log (Option B: Mandatory Documentation)
 export interface OverrideLog {
   id: string;

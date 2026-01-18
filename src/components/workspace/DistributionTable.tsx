@@ -2,7 +2,17 @@
 
 import React from 'react';
 import { Employee, ClassItem, Lesson, AbsenceRecord, SubstitutionLog, CalendarEvent } from '@/types';
-import { normalizeArabic } from '@/utils';
+import { normalizeArabic, toLocalISOString } from '@/utils';
+import { 
+  getCompactSubjectLabel, 
+  formatClassDisplayName, 
+  getLessonColorScheme, 
+  getCoverageStatus, 
+  getTeacherShortName 
+} from '@/utils/workspace/lessonHelpers';
+import LessonTooltip from './LessonTooltip';
+import { AvailableSubsBadge, SharedLessonBadge } from './LessonBadges';
+import { countAvailableSubstitutes, calculateTeacherWorkload } from '@/utils/workspace/teacherHelpers';
 
 interface DistributionTableProps {
   classes: ClassItem[];
@@ -21,7 +31,7 @@ interface DistributionTableProps {
   dayName: string;
   onToggleClass: (classId: string) => void;
   onTogglePeriod: (period: number) => void;
-  onLessonClick: (lesson: Lesson) => void;
+  onLessonClick: (lesson: Lesson, className: string) => void;
 }
 
 /**
@@ -38,6 +48,9 @@ const DistributionTable: React.FC<DistributionTableProps> = ({
   selectedMode,
   assignments,
   distributionGrid,
+  absences,
+  substitutionLogs,
+  viewDate,
   dayName,
   onToggleClass,
   onTogglePeriod,
@@ -123,53 +136,195 @@ const DistributionTable: React.FC<DistributionTableProps> = ({
 
               {/* Lesson Cells */}
               {classes.map(cls => {
-                const lesson = findLesson(cls.id, period);
-                const cellAssignments = getAssignments(cls.id, period);
-                const distributionData = distributionGrid[`${cls.id}-${period}`];
-                const isInSelection =
+                const normDay = normalizeArabic(dayName);
+                const lesson = lessons.find(
+                  l =>
+                    l.classId === cls.id &&
+                    l.period === period &&
+                    normalizeArabic(l.day) === normDay
+                );
+                const slotKey = `${cls.id}-${period}`;
+                const isSelected =
                   selectedMode &&
                   selectedClasses.includes(cls.id) &&
                   selectedPeriods.includes(period);
 
+                // If no lesson, show empty cell
+                if (!lesson) {
+                  return (
+                    <td
+                      key={slotKey}
+                      className={`
+                        p-1 border border-slate-200 text-center text-[8px] text-slate-400
+                        ${isSelected ? 'bg-indigo-100 ring-2 ring-indigo-400' : 'bg-white'}
+                      `}
+                    >
+                      فراغ
+                    </td>
+                  );
+                }
+
+                // Get teacher and color scheme
+                const teacher = employees.find(e => e.id === lesson.teacherId);
+                const colorScheme = getLessonColorScheme(lesson, teacher, cls.id);
+                const subjectLabel = getCompactSubjectLabel(lesson.subject);
+
+                // Get coverage status
+                const dateStr = toLocalISOString(viewDate);
+                const coverage = getCoverageStatus(
+                  lesson,
+                  absences,
+                  assignments,
+                  substitutionLogs,
+                  dateStr
+                );
+
+                // Get assignments for this slot
+                const localAssignments = assignments[slotKey] || [];
+                const distributionSlot = distributionGrid[slotKey];
+
+                // NEW: Calculate available substitutes
+                const absentIds = absences
+                  .filter(a => a.date === dateStr)
+                  .map(a => a.teacherId);
+                const assignedIds = substitutionLogs
+                  .filter(s => s.date === dateStr && s.period === period)
+                  .map(s => s.substituteId);
+                const availableSubsCount = countAvailableSubstitutes(
+                  period,
+                  cls.id,
+                  dayName,
+                  employees,
+                  lessons,
+                  absentIds,
+                  assignedIds
+                );
+
+                // NEW: Calculate teacher workload
+                const todaySubstitutions = substitutionLogs.filter(
+                  s => s.date === dateStr
+                );
+                const teacherWorkload = teacher
+                  ? calculateTeacherWorkload(teacher.id, lessons, dayName, todaySubstitutions)
+                  : 0;
+
+                // Check if lesson is shared
+                const isShared =
+                  lesson.subject?.includes('مشترك') ||
+                  lesson.type === 'shared' ||
+                  lesson.type === 'computerized';
+
                 return (
                   <td
-                    key={`${cls.id}-${period}`}
-                    onClick={() => lesson && onLessonClick(lesson)}
-                    className={`border border-gray-200 p-1 text-center cursor-pointer hover:bg-indigo-50 transition-colors ${
-                      isInSelection ? 'bg-amber-50 ring-2 ring-amber-400' : 'bg-white'
-                    }`}
+                    key={slotKey}
+                    onClick={(e) => {
+                      if (e.shiftKey) {
+                        onLessonClick(lesson, cls.name);
+                      }
+                    }}
+                    className={`
+                      relative p-1 border cursor-pointer transition-all
+                      ${colorScheme.bg} ${colorScheme.border}
+                      ${isSelected ? 'ring-2 ring-indigo-500 ring-inset' : ''}
+                      ${coverage.status === 'absent-uncovered' ? 'ring-2 ring-rose-500 ring-offset-1' : ''}
+                      ${coverage.status === 'absent-covered' ? 'ring-2 ring-emerald-500 ring-offset-1' : ''}
+                      hover:shadow-lg hover:scale-105 hover:z-10
+                      group
+                    `}
+                    title={`${lesson.subject} - ${teacher?.name || 'غير معروف'} - حصة ${period}`}
                   >
-                    {lesson ? (
-                      <div className="flex flex-col gap-1">
-                        {/* Original Lesson */}
-                        <div className="text-[8px] font-bold text-gray-700">
-                          {lesson.subject}
-                        </div>
-                        <div className="text-[7px] text-gray-500">
-                          {employees.find(e => e.id === lesson.teacherId)?.name || '?'}
-                        </div>
-
-                        {/* Assignments */}
-                        {cellAssignments.length > 0 && (
-                          <div className="bg-emerald-100 border border-emerald-300 rounded p-1 text-[7px]">
-                            {cellAssignments.map((a, i) => (
-                              <div key={i} className="text-emerald-700 font-bold">
-                                {employees.find(e => e.id === a.teacherId)?.name || '?'}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Distribution */}
-                        {distributionData && (
-                          <div className="bg-blue-100 border border-blue-300 rounded p-1 text-[7px] text-blue-700 font-bold">
-                            {distributionData.substituteName}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="text-gray-300 text-[8px]">—</div>
+                    {/* Available Substitutes Badge */}
+                    {coverage.status !== 'normal' && (
+                      <AvailableSubsBadge count={availableSubsCount} />
                     )}
+
+                    {/* Main Content */}
+                    <div className="flex flex-col gap-0.5">
+                      {/* Subject with icon */}
+                      <div className={`flex items-center gap-1 text-[9px] font-bold ${colorScheme.text}`}>
+                        {subjectLabel.icon && (
+                          <subjectLabel.icon size={10} className={subjectLabel.color} />
+                        )}
+                        <span className="truncate">{subjectLabel.text}</span>
+                      </div>
+
+                      {/* Teacher name */}
+                      <div className="text-[8px] text-gray-700 font-medium truncate">
+                        {getTeacherShortName(teacher)}
+                      </div>
+
+                      {/* Badges */}
+                      <div className="flex flex-wrap gap-0.5">
+                        {/* Teacher role badge */}
+                        {colorScheme.badge && (
+                          <div
+                            className={`
+                              text-[7px] px-1 py-0.5 rounded font-bold
+                              ${colorScheme.badgeBg} ${colorScheme.text}
+                            `}
+                          >
+                            {colorScheme.badge}
+                          </div>
+                        )}
+
+                        {/* Shared lesson badge */}
+                        {isShared && <SharedLessonBadge />}
+                      </div>
+
+                      {/* Absence status */}
+                      {coverage.status !== 'normal' && (
+                        <div
+                          className={`
+                            text-[8px] font-bold flex items-center gap-1
+                            ${coverage.color}
+                          `}
+                        >
+                          <span>{coverage.icon}</span>
+                          <span>{coverage.label}</span>
+                        </div>
+                      )}
+
+                      {/* Manual assignments (substitutes) */}
+                      {localAssignments.length > 0 && (
+                        <div className="space-y-0.5 mt-1 pt-1 border-t border-gray-300">
+                          {localAssignments.map(assign => {
+                            const substitute = employees.find(e => e.id === assign.teacherId);
+                            return (
+                              <div
+                                key={assign.teacherId}
+                                className="text-[7px] bg-emerald-100 text-emerald-900 px-1 py-0.5 rounded font-bold flex items-center gap-1"
+                              >
+                                <span>↪</span>
+                                <span className="truncate">
+                                  {getTeacherShortName(substitute)}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Auto distribution substitute */}
+                      {distributionSlot && !localAssignments.length && (
+                        <div className="text-[7px] bg-blue-100 text-blue-900 px-1 py-0.5 rounded font-bold flex items-center gap-1 mt-1">
+                          <span>🤖</span>
+                          <span className="truncate">{distributionSlot.substituteName}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tooltip */}
+                    <LessonTooltip
+                      lesson={lesson}
+                      teacher={teacher}
+                      classInfo={{
+                        name: cls.name,
+                        gradeLevel: cls.gradeLevel
+                      }}
+                      availableSubstitutes={coverage.status !== 'normal' ? availableSubsCount : undefined}
+                      coverage={coverage}
+                      teacherWorkload={teacherWorkload}
+                    />
                   </td>
                 );
               })}

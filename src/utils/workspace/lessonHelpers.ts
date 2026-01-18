@@ -136,3 +136,160 @@ export function findMultipleLessons(
     normalizeArabic(l.day) === normDay
   );
 }
+
+/**
+ * Determines color scheme for a lesson based on teacher role
+ * @param lesson - The lesson to color
+ * @param teacher - The teacher teaching the lesson
+ * @param classId - The class ID being taught
+ * @returns Color scheme object with Tailwind classes
+ */
+export function getLessonColorScheme(
+  lesson: any,
+  teacher: any,
+  classId: string
+): {
+  bg: string;
+  border: string;
+  text: string;
+  badge?: string;
+  badgeBg?: string;
+} {
+  if (!teacher) {
+    return { bg: 'bg-slate-50', border: 'border-slate-300', text: 'text-slate-900' };
+  }
+
+  // Priority 1: Class Educator (highest priority)
+  if (teacher.addons?.educator && teacher.addons.educatorClassId === classId) {
+    return {
+      bg: 'bg-emerald-50',
+      border: 'border-emerald-400',
+      text: 'text-emerald-900',
+      badge: '🏫 مربي',
+      badgeBg: 'bg-emerald-100'
+    };
+  }
+
+  // Priority 2: Stay/Makooth lesson
+  if (lesson.type === 'stay' || lesson.type === 'makooth') {
+    return {
+      bg: 'bg-amber-50',
+      border: 'border-amber-400',
+      text: 'text-amber-900',
+      badge: '☕ مكوث',
+      badgeBg: 'bg-amber-100'
+    };
+  }
+
+  // Priority 3: Individual lesson
+  if (lesson.type === 'individual') {
+    return {
+      bg: 'bg-purple-50',
+      border: 'border-purple-400',
+      text: 'text-purple-900',
+      badge: '👤 فردي',
+      badgeBg: 'bg-purple-100'
+    };
+  }
+
+  // Priority 4: Shared lesson
+  if (
+    lesson.subject?.includes('مشترك') ||
+    lesson.type === 'shared' ||
+    lesson.type === 'computerized' ||
+    lesson.type === 'differential'
+  ) {
+    return {
+      bg: 'bg-blue-50',
+      border: 'border-blue-400',
+      text: 'text-blue-900',
+      badge: '👥 مشترك',
+      badgeBg: 'bg-blue-100'
+    };
+  }
+
+  // Default: Regular lesson
+  return {
+    bg: 'bg-slate-50',
+    border: 'border-slate-300',
+    text: 'text-slate-900'
+  };
+}
+
+/**
+ * Determines coverage status for a lesson (normal, absent, covered, uncovered)
+ * @param lesson - The lesson to check
+ * @param absences - Array of absence records
+ * @param assignments - Manual assignments record
+ * @param substitutionLogs - Substitution logs
+ * @param dateStr - Date string in ISO format
+ * @returns Coverage status object
+ */
+export function getCoverageStatus(
+  lesson: any,
+  absences: any[],
+  assignments: Record<string, any[]>,
+  substitutionLogs: any[],
+  dateStr: string
+): {
+  status: 'normal' | 'absent-covered' | 'absent-uncovered';
+  icon: string;
+  color: string;
+  label: string;
+} {
+  if (!lesson || !lesson.teacherId) {
+    return { status: 'normal', icon: '', color: '', label: '' };
+  }
+
+  const slotKey = `${lesson.classId}-${lesson.period}`;
+
+  // Check if teacher is absent
+  const teacherAbsence = absences.find(
+    a =>
+      a.teacherId === lesson.teacherId &&
+      a.date === dateStr &&
+      (a.type === 'FULL' ||
+        (a.type === 'PARTIAL' && a.affectedPeriods?.includes(lesson.period)))
+  );
+
+  if (!teacherAbsence) {
+    return { status: 'normal', icon: '', color: '', label: '' };
+  }
+
+  // Teacher is absent - check for coverage
+  const hasManualAssignment = assignments[slotKey] && assignments[slotKey].length > 0;
+  const hasSubstitutionLog = substitutionLogs.some(
+    s =>
+      s.date === dateStr &&
+      s.period === lesson.period &&
+      s.classId === lesson.classId &&
+      s.absentTeacherId === lesson.teacherId
+  );
+
+  if (hasManualAssignment || hasSubstitutionLog) {
+    return {
+      status: 'absent-covered',
+      icon: '✅',
+      color: 'text-emerald-600',
+      label: 'مغطى'
+    };
+  }
+
+  return {
+    status: 'absent-uncovered',
+    icon: '❌',
+    color: 'text-rose-600',
+    label: 'غير مغطى'
+  };
+}
+
+/**
+ * Returns shortened teacher name (first name only)
+ * @param teacher - Employee object
+ * @returns Short name or fallback
+ */
+export function getTeacherShortName(teacher: any): string {
+  if (!teacher || !teacher.name) return '؟';
+  const parts = teacher.name.trim().split(/\s+/);
+  return parts[0] || '؟';
+}

@@ -179,3 +179,82 @@ export function getTeacherDisplayName(
 
   return teacher.name;
 }
+
+/**
+ * Count available substitute teachers for a specific lesson slot
+ * @param period - Lesson period
+ * @param classId - Class ID
+ * @param day - Day name
+ * @param employees - All employees
+ * @param lessons - All lessons
+ * @param absentTeacherIds - IDs of absent teachers
+ * @param alreadyAssignedIds - IDs of already assigned teachers
+ * @returns Count of available teachers
+ */
+export function countAvailableSubstitutes(
+  period: number,
+  classId: string,
+  day: string,
+  employees: any[],
+  lessons: any[],
+  absentTeacherIds: number[],
+  alreadyAssignedIds: number[]
+): number {
+  const normalizedDay = normalizeArabic(day);
+  let count = 0;
+
+  for (const employee of employees) {
+    // Skip if absent
+    if (absentTeacherIds.includes(employee.id)) continue;
+
+    // Skip if already assigned
+    if (alreadyAssignedIds.includes(employee.id)) continue;
+
+    // Find employee's lesson at this time
+    const employeeLesson = lessons.find(
+      l =>
+        l.teacherId === employee.id &&
+        l.period === period &&
+        normalizeArabic(l.day) === normalizedDay
+    );
+
+    // Available if: no lesson, or individual/stay lesson
+    if (
+      !employeeLesson ||
+      employeeLesson.type === 'individual' ||
+      employeeLesson.type === 'stay' ||
+      employeeLesson.type === 'makooth'
+    ) {
+      count++;
+    }
+  }
+
+  return count;
+}
+
+/**
+ * Calculate teacher's workload for a specific day
+ * @param teacherId - Teacher ID
+ * @param lessons - All lessons
+ * @param day - Day name
+ * @param substitutions - Substitution logs for the day
+ * @returns Number of lessons (regular + substitutions)
+ */
+export function calculateTeacherWorkload(
+  teacherId: number,
+  lessons: any[],
+  day: string,
+  substitutions: any[]
+): number {
+  const normalizedDay = normalizeArabic(day);
+
+  // Count regular lessons
+  const regularLessons = lessons.filter(
+    l => l.teacherId === teacherId && normalizeArabic(l.day) === normalizedDay
+  ).length;
+
+  // Count substitutions
+  const subCount = substitutions.filter(s => s.substituteId === teacherId).length;
+
+  return regularLessons + subCount;
+}

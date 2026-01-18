@@ -47,7 +47,7 @@ import {
 
 // Utils
 import { toLocalISOString } from '@/utils';
-import { getAvailableTeachers } from '@/utils/workspace/getAvailableTeachers';
+import { getAvailableTeachers, groupAvailableTeachersByCategory } from '@/utils/workspace/getAvailableTeachers';
 
 interface WorkspaceProps {
   employees: Employee[];
@@ -183,24 +183,26 @@ const Workspace: React.FC<WorkspaceProps> = ({
   // COMPUTED VALUES
   // ==========================================================================
   const availableTeachers = manualAssignments.selectedLesson
-    ? getAvailableTeachers({
-        period: manualAssignments.selectedLesson.period,
-        classId: manualAssignments.selectedLesson.classId,
-        day: manualAssignments.selectedLesson.day,
-        employees,
-        lessons,
-        absentTeacherIds: absences
-          .filter(a => a.date === toLocalISOString(workspaceView.viewDate))
-          .map(a => a.teacherId),
-        alreadyAssignedIds: substitutionLogs
-          .filter(
-            s =>
-              s.date === toLocalISOString(workspaceView.viewDate) &&
-              s.period === manualAssignments.selectedLesson!.period
-          )
-          .map(s => s.substituteId)
-      })
-    : [];
+    ? groupAvailableTeachersByCategory(
+        getAvailableTeachers({
+          period: manualAssignments.selectedLesson.period,
+          classId: manualAssignments.selectedLesson.classId,
+          day: manualAssignments.selectedLesson.day,
+          employees,
+          lessons,
+          absentTeacherIds: absences
+            .filter(a => a.date === toLocalISOString(workspaceView.viewDate))
+            .map(a => a.teacherId),
+          alreadyAssignedIds: substitutionLogs
+            .filter(
+              s =>
+                s.date === toLocalISOString(workspaceView.viewDate) &&
+                s.period === manualAssignments.selectedLesson!.period
+            )
+            .map(s => s.substituteId)
+        })
+      )
+    : { educators: [], stayLessonTeachers: [], sharedSecondaryTeachers: [], individualTeachers: [] };
 
   const slotCandidates = manualAssignments.activeSlot
     ? getSlotCandidates(
