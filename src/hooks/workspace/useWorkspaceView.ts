@@ -78,7 +78,7 @@ export const useWorkspaceView = ({
     }
 
     // Check 3: Does the selected day exist in lessons?
-    const hasLessonsForDay = lessons.some(l => l.day === dayNameFromDate);
+    const hasLessonsForDay = lessons.some(l => normalizeArabic(l.day) === normDayName);
 
     if (!hasLessonsForDay) {
       return { isSchool: false, reason: 'لا توجد حصص مجدولة لهذا اليوم' };
@@ -107,6 +107,13 @@ export const useWorkspaceView = ({
   // Sync boardViewDate with viewDate on change
   useEffect(() => {
     setBoardViewDate(toLocalISOString(viewDate));
+  }, [viewDate]);
+
+  // Sync selectedDay with viewDate on change
+  useEffect(() => {
+    const dayOfWeek = viewDate.getDay(); // 0 = Sunday, 6 = Saturday
+    const dayNameFromDate = DAYS_AR[dayOfWeek];
+    setSelectedDay(dayNameFromDate);
   }, [viewDate]);
 
   return {

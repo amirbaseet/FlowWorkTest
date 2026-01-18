@@ -26,6 +26,7 @@ export interface UseManualAssignmentsReturn {
   }>) => void;
   handleLessonClick: (lesson: any, className: string) => void;
   handleSelectTeacher: (teacherId: number) => void;
+  handleSwapWithLast: (teacherId: number, scheduleConfig?: { periodsPerDay: number }) => void;
   setActiveSlot: (slot: { classId: string; period: number } | null) => void;
   closePopup: () => void;
 }
@@ -236,6 +237,54 @@ export const useManualAssignments = ({
     addToast(`✅ تم اختيار ${teacher?.name || 'معلم'} كبديل`, 'success');
   }, [selectedLesson, employees, handleAssign, addToast]);
 
+  // Handler: Swap with last period (for early dismissal)
+  const handleSwapWithLast = useCallback((teacherId: number, scheduleConfig?: { periodsPerDay: number }) => {
+    if (!selectedLesson) return;
+    if (!scheduleConfig) {
+      addToast('⚠️ لا يمكن تحديد الحصة الأخيرة', 'warning');
+      return;
+    }
+
+    const teacher = employees.find(e => e.id === teacherId);
+    const normDay = normalizeArabic(dayName);
+    const lastPeriod = scheduleConfig.periodsPerDay;
+    
+    // Find teacher's lesson in last period
+    const lastPeriodLesson = lessons.find(l => 
+      l.teacherId === teacherId &&
+      l.period === lastPeriod &&
+      normalizeArabic(l.day) === normDay
+    );
+
+    if (!lastPeriodLesson) {
+      addToast('⚠️ المعلم ليس لديه حصة في الحصة الأخيرة', 'warning');
+      return;
+    }
+
+    // Verify last period is in same class as target
+    if (lastPeriodLesson.classId !== selectedLesson.classId) {
+      addToast('⚠️ الحصة الأخيرة ليست في نفس الصف', 'warning');
+      return;
+    }
+
+    // Assign teacher to current period
+    handleAssign(
+      selectedLesson.classId,
+      selectedLesson.period,
+      teacherId,
+      `بديل مع تبديل - ${teacher?.name || 'معلم'} (مغادرة مبكرة)`
+    );
+
+    setIsPopupOpen(false);
+    setSelectedLesson(null);
+    
+    addToast(
+      `✅ تم تعيين ${teacher?.name || 'معلم'} مع تبديل الحصة ${selectedLesson.period} والحصة ${lastPeriod}\n` +
+      `يمكن للمعلم المغادرة بعد الحصة ${selectedLesson.period}`,
+      'success'
+    );
+  }, [selectedLesson, employees, lessons, dayName, handleAssign, addToast]);
+
   // Handler: Close popup
   const closePopup = useCallback(() => {
     setIsPopupOpen(false);
@@ -252,6 +301,7 @@ export const useManualAssignments = ({
     handleBulkAssign,
     handleLessonClick,
     handleSelectTeacher,
+    handleSwapWithLast,
     setActiveSlot,
     closePopup
   };

@@ -50,7 +50,7 @@ import {
 
 // Utils
 import { toLocalISOString } from '@/utils';
-import { getAvailableTeachers, groupAvailableTeachersByCategory } from '@/utils/workspace/getAvailableTeachers';
+import { getAvailableTeachers } from '@/utils/workspace/getAvailableTeachers';
 
 interface WorkspaceProps {
   employees: Employee[];
@@ -196,26 +196,31 @@ const Workspace: React.FC<WorkspaceProps> = ({
   // COMPUTED VALUES
   // ==========================================================================
   const availableTeachers = manualAssignments.selectedLesson
-    ? groupAvailableTeachersByCategory(
-        getAvailableTeachers({
-          period: manualAssignments.selectedLesson.period,
-          classId: manualAssignments.selectedLesson.classId,
-          day: manualAssignments.selectedLesson.day,
-          employees,
-          lessons,
-          absentTeacherIds: absences
-            .filter(a => a.date === toLocalISOString(workspaceView.viewDate))
-            .map(a => a.teacherId),
-          alreadyAssignedIds: substitutionLogs
-            .filter(
-              s =>
-                s.date === toLocalISOString(workspaceView.viewDate) &&
-                s.period === manualAssignments.selectedLesson!.period
-            )
-            .map(s => s.substituteId)
-        })
-      )
-    : { educators: [], stayLessonTeachers: [], sharedSecondaryTeachers: [], individualTeachers: [] };
+    ? getAvailableTeachers({
+        period: manualAssignments.selectedLesson.period,
+        classId: manualAssignments.selectedLesson.classId,
+        day: manualAssignments.selectedLesson.day,
+        employees,
+        lessons,
+        absentTeacherIds: absences
+          .filter(a => a.date === toLocalISOString(workspaceView.viewDate))
+          .map(a => a.teacherId),
+        alreadyAssignedIds: substitutionLogs
+          .filter(
+            s =>
+              s.date === toLocalISOString(workspaceView.viewDate) &&
+              s.period === manualAssignments.selectedLesson!.period
+          )
+          .map(s => s.substituteId),
+        scheduleConfig: scheduleConfig
+      })
+    : {
+        educatorCandidates: [],
+        sharedCandidates: [],
+        individualCandidates: [],
+        stayCandidates: [],
+        availableCandidates: []
+      };
 
   const slotCandidates = manualAssignments.activeSlot
     ? getSlotCandidates(
@@ -382,7 +387,15 @@ const Workspace: React.FC<WorkspaceProps> = ({
           }
         }
         availableTeachers={availableTeachers}
-        onSelectTeacher={manualAssignments.handleSelectTeacher}
+        onSelectTeacher={(teacherId, swapWithLast) => {
+          if (swapWithLast) {
+            // Handle swap logic - teacher will be assigned and can leave early
+            manualAssignments.handleSwapWithLast(teacherId, scheduleConfig);
+          } else {
+            // Regular assignment
+            manualAssignments.handleSelectTeacher(teacherId);
+          }
+        }}
       />
 
       {modals.showSaveModal && (

@@ -1,24 +1,6 @@
 import React from 'react';
-import { X, Award, Coffee, Users, UserCircle } from 'lucide-react';
-
-interface Teacher {
-  id: number;
-  name: string;
-  subjects?: string[];
-  isExternal?: boolean;
-}
-
-interface CategorizedTeacher {
-  teacher: Teacher;
-  reason: string;
-}
-
-interface AvailableTeachers {
-  educators: CategorizedTeacher[];
-  stayLessonTeachers: CategorizedTeacher[];
-  sharedSecondaryTeachers: CategorizedTeacher[];
-  individualTeachers: CategorizedTeacher[];
-}
+import { X, GraduationCap, Users, User, Coffee, CheckCircle2, RefreshCw } from 'lucide-react';
+import type { AvailableTeacherInfo } from '@/utils/workspace/getAvailableTeachers';
 
 interface AvailableTeachersPopupProps {
   isOpen: boolean;
@@ -29,8 +11,14 @@ interface AvailableTeachersPopupProps {
     className: string;
     subject: string;
   };
-  availableTeachers: AvailableTeachers;
-  onSelectTeacher: (teacherId: number) => void;
+  availableTeachers: {
+    educatorCandidates: AvailableTeacherInfo[];
+    sharedCandidates: AvailableTeacherInfo[];
+    individualCandidates: AvailableTeacherInfo[];
+    stayCandidates: AvailableTeacherInfo[];
+    availableCandidates: AvailableTeacherInfo[];
+  };
+  onSelectTeacher: (teacherId: number, swapWithLast?: boolean) => void;
 }
 
 const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
@@ -38,214 +26,228 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
   onClose,
   lesson,
   availableTeachers,
-  onSelectTeacher,
+  onSelectTeacher
 }) => {
   if (!isOpen) return null;
 
-  const handleSelectTeacher = (teacherId: number) => {
-    onSelectTeacher(teacherId);
-    onClose();
-  };
+  const {
+    educatorCandidates,
+    sharedCandidates,
+    individualCandidates,
+    stayCandidates,
+    availableCandidates
+  } = availableTeachers;
 
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
+  const totalCount =
+    educatorCandidates.length +
+    sharedCandidates.length +
+    individualCandidates.length +
+    stayCandidates.length +
+    availableCandidates.length;
 
-  const totalTeachers =
-    availableTeachers.educators.length +
-    availableTeachers.stayLessonTeachers.length +
-    availableTeachers.sharedSecondaryTeachers.length +
-    availableTeachers.individualTeachers.length;
+  const renderTeacherCard = (teacher: AvailableTeacherInfo) => {
+    const categoryInfo = {
+      educator: { icon: GraduationCap, color: 'emerald', label: 'مربي الصف' },
+      shared: { icon: Users, color: 'blue', label: 'حصة مشتركة' },
+      individual: { icon: User, color: 'purple', label: 'حصة فردية' },
+      stay: { icon: Coffee, color: 'amber', label: 'حصة مكوث' },
+      available: { icon: CheckCircle2, color: 'green', label: 'متاح' }
+    };
+
+    const info = categoryInfo[teacher.category];
+    const Icon = info.icon;
+
+    return (
+      <div key={teacher.teacherId} className="border-b border-gray-100 last:border-0">
+        {/* Main selection button */}
+        <button
+          onClick={() => onSelectTeacher(teacher.teacherId, false)}
+          className={`
+            w-full text-right p-3 hover:bg-${info.color}-50 transition-colors flex items-start gap-3
+          `}
+        >
+          {/* Icon */}
+          <div
+            className={`
+              w-10 h-10 rounded-lg flex items-center justify-center shrink-0
+              bg-${info.color}-100 border-2 border-${info.color}-300
+            `}
+          >
+            <Icon size={20} className={`text-${info.color}-700`} />
+          </div>
+
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            {/* Name */}
+            <div className="font-bold text-gray-900 text-sm mb-1">
+              {teacher.teacherName}
+            </div>
+
+            {/* Category badge */}
+            <div
+              className={`
+                inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold mb-1
+                bg-${info.color}-100 text-${info.color}-900
+              `}
+            >
+              <Icon size={10} />
+              <span>{info.label}</span>
+            </div>
+
+            {/* Current lesson info */}
+            {teacher.currentLesson && (
+              <div className="text-xs text-gray-600 mt-1 space-y-0.5">
+                <div className="flex items-center gap-1">
+                  <span className="font-medium">الآن:</span>
+                  <span>{teacher.currentLesson.subject}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="font-medium">في:</span>
+                  <span>{teacher.currentLesson.className}</span>
+                </div>
+              </div>
+            )}
+
+            {!teacher.currentLesson && teacher.category === 'available' && (
+              <div className="text-xs text-green-600 font-medium">
+                ✓ فراغ - متاح تماماً
+              </div>
+            )}
+          </div>
+
+          {/* Priority indicator */}
+          <div
+            className={`
+              shrink-0 w-6 h-6 rounded-full flex items-center justify-center
+              bg-${info.color}-200 text-${info.color}-900 text-xs font-black
+            `}
+          >
+            {teacher.priority}
+          </div>
+        </button>
+
+        {/* Swap option (if available) */}
+        {teacher.canSwapWithLast && teacher.swapInfo && (
+          <div className="bg-indigo-50 px-3 py-2 border-t border-indigo-200">
+            <button
+              onClick={() => onSelectTeacher(teacher.teacherId, true)}
+              className="w-full flex items-center gap-2 p-2 bg-white border-2 border-indigo-300 rounded-lg hover:bg-indigo-100 transition-colors"
+            >
+              <RefreshCw size={14} className="text-indigo-600" />
+              <div className="flex-1 text-right">
+                <div className="text-xs font-bold text-indigo-900">
+                  🔄 تبديل مع الحصة الأخيرة
+                </div>
+                <div className="text-[10px] text-indigo-700">
+                  يمكن للمعلم المغادرة مبكراً بعد حصة {teacher.swapInfo.currentPeriod}
+                </div>
+              </div>
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-      onClick={handleBackdropClick}
-    >
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 flex items-center justify-between text-white">
+        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold mb-1">المعلمون البدلاء المتاحون</h2>
-            <p className="text-indigo-100 text-sm">
-              {lesson.subject} • {lesson.className} • الحصة {lesson.period}
+            <h3 className="text-lg font-black text-gray-900">
+              اختيار معلم بديل
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              {lesson.className} - حصة {lesson.period} - {lesson.subject}
             </p>
+            <div className="text-xs text-gray-500 mt-1">
+              {totalCount} معلم متاح
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-            aria-label="إغلاق"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <X className="w-6 h-6" />
+            <X size={20} />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {totalTeachers === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-              <UserCircle className="w-16 h-16 mb-4 opacity-30" />
-              <p className="text-lg font-medium">لا يوجد معلمون متاحون</p>
-              <p className="text-sm mt-2">جميع المعلمين مشغولون في هذه الفترة</p>
+        <div className="flex-1 overflow-y-auto">
+          {/* Educators */}
+          {educatorCandidates.length > 0 && (
+            <div className="border-b-4 border-emerald-200">
+              <div className="bg-emerald-50 px-4 py-2 sticky top-0 z-10">
+                <h4 className="text-sm font-black text-emerald-900 flex items-center gap-2">
+                  <GraduationCap size={16} />
+                  مربو الصفوف ({educatorCandidates.length})
+                </h4>
+              </div>
+              {educatorCandidates.map(renderTeacherCard)}
             </div>
-          ) : (
-            <div className="space-y-6">
-              {/* Educators Section */}
-              {availableTeachers.educators.length > 0 && (
-                <TeacherSection
-                  title="المربون (معلمو الصف)"
-                  icon={<Award className="w-5 h-5" />}
-                  teachers={availableTeachers.educators}
-                  onSelectTeacher={handleSelectTeacher}
-                  colorTheme="emerald"
-                />
-              )}
+          )}
 
-              {/* Stay Lesson Teachers Section */}
-              {availableTeachers.stayLessonTeachers.length > 0 && (
-                <TeacherSection
-                  title="معلمو حصص البقاء"
-                  icon={<Coffee className="w-5 h-5" />}
-                  teachers={availableTeachers.stayLessonTeachers}
-                  onSelectTeacher={handleSelectTeacher}
-                  colorTheme="amber"
-                />
-              )}
+          {/* Shared */}
+          {sharedCandidates.length > 0 && (
+            <div className="border-b-4 border-blue-200">
+              <div className="bg-blue-50 px-4 py-2 sticky top-0 z-10">
+                <h4 className="text-sm font-black text-blue-900 flex items-center gap-2">
+                  <Users size={16} />
+                  معلمو الحصص المشتركة ({sharedCandidates.length})
+                </h4>
+              </div>
+              {sharedCandidates.map(renderTeacherCard)}
+            </div>
+          )}
 
-              {/* Shared Secondary Teachers Section */}
-              {availableTeachers.sharedSecondaryTeachers.length > 0 && (
-                <TeacherSection
-                  title="معلمو الحصص المشتركة الثانويون"
-                  icon={<Users className="w-5 h-5" />}
-                  teachers={availableTeachers.sharedSecondaryTeachers}
-                  onSelectTeacher={handleSelectTeacher}
-                  colorTheme="blue"
-                />
-              )}
+          {/* Individual */}
+          {individualCandidates.length > 0 && (
+            <div className="border-b-4 border-purple-200">
+              <div className="bg-purple-50 px-4 py-2 sticky top-0 z-10">
+                <h4 className="text-sm font-black text-purple-900 flex items-center gap-2">
+                  <User size={16} />
+                  معلمو الحصص الفردية ({individualCandidates.length})
+                </h4>
+              </div>
+              {individualCandidates.map(renderTeacherCard)}
+            </div>
+          )}
 
-              {/* Individual Teachers Section */}
-              {availableTeachers.individualTeachers.length > 0 && (
-                <TeacherSection
-                  title="معلمو الحصص الفردية"
-                  icon={<UserCircle className="w-5 h-5" />}
-                  teachers={availableTeachers.individualTeachers}
-                  onSelectTeacher={handleSelectTeacher}
-                  colorTheme="purple"
-                />
-              )}
+          {/* Stay */}
+          {stayCandidates.length > 0 && (
+            <div className="border-b-4 border-amber-200">
+              <div className="bg-amber-50 px-4 py-2 sticky top-0 z-10">
+                <h4 className="text-sm font-black text-amber-900 flex items-center gap-2">
+                  <Coffee size={16} />
+                  معلمو حصص المكوث ({stayCandidates.length})
+                </h4>
+              </div>
+              {stayCandidates.map(renderTeacherCard)}
+            </div>
+          )}
+
+          {/* Available */}
+          {availableCandidates.length > 0 && (
+            <div>
+              <div className="bg-green-50 px-4 py-2 sticky top-0 z-10">
+                <h4 className="text-sm font-black text-green-900 flex items-center gap-2">
+                  <CheckCircle2 size={16} />
+                  المتاحون ({availableCandidates.length})
+                </h4>
+              </div>
+              {availableCandidates.map(renderTeacherCard)}
+            </div>
+          )}
+
+          {/* Empty state */}
+          {totalCount === 0 && (
+            <div className="p-8 text-center text-gray-400">
+              <Users size={48} className="mx-auto mb-3 opacity-30" />
+              <p className="font-bold">لا يوجد معلمون متاحون</p>
             </div>
           )}
         </div>
-
-        {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-          <p className="text-sm text-gray-600 text-center">
-            💡 اختر معلماً من القائمة أعلاه لتعيينه كبديل لهذه الحصة
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-interface TeacherSectionProps {
-  title: string;
-  icon: React.ReactNode;
-  teachers: CategorizedTeacher[];
-  onSelectTeacher: (teacherId: number) => void;
-  colorTheme: 'emerald' | 'amber' | 'blue' | 'purple';
-}
-
-const TeacherSection: React.FC<TeacherSectionProps> = ({
-  title,
-  icon,
-  teachers,
-  onSelectTeacher,
-  colorTheme,
-}) => {
-  const themeClasses = {
-    emerald: {
-      header: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      icon: 'text-emerald-600',
-      card: 'border-emerald-200 hover:border-emerald-400 hover:shadow-emerald-100',
-      badge: 'bg-emerald-100 text-emerald-700',
-      externalBadge: 'bg-emerald-500',
-    },
-    amber: {
-      header: 'bg-amber-50 text-amber-700 border-amber-200',
-      icon: 'text-amber-600',
-      card: 'border-amber-200 hover:border-amber-400 hover:shadow-amber-100',
-      badge: 'bg-amber-100 text-amber-700',
-      externalBadge: 'bg-amber-500',
-    },
-    blue: {
-      header: 'bg-blue-50 text-blue-700 border-blue-200',
-      icon: 'text-blue-600',
-      card: 'border-blue-200 hover:border-blue-400 hover:shadow-blue-100',
-      badge: 'bg-blue-100 text-blue-700',
-      externalBadge: 'bg-blue-500',
-    },
-    purple: {
-      header: 'bg-purple-50 text-purple-700 border-purple-200',
-      icon: 'text-purple-600',
-      card: 'border-purple-200 hover:border-purple-400 hover:shadow-purple-100',
-      badge: 'bg-purple-100 text-purple-700',
-      externalBadge: 'bg-purple-500',
-    },
-  };
-
-  const theme = themeClasses[colorTheme];
-
-  return (
-    <div className="space-y-3">
-      {/* Section Header */}
-      <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${theme.header}`}>
-        <span className={theme.icon}>{icon}</span>
-        <h3 className="font-semibold text-base">
-          {title} ({teachers.length})
-        </h3>
-      </div>
-
-      {/* Teacher Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {teachers.map(({ teacher, reason }) => (
-          <button
-            key={teacher.id}
-            onClick={() => onSelectTeacher(teacher.id)}
-            className={`
-              relative p-4 border-2 rounded-lg text-right
-              transition-all duration-200
-              hover:shadow-lg hover:scale-[1.02]
-              focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
-              ${theme.card}
-            `}
-          >
-            {/* External Badge */}
-            {teacher.isExternal && (
-              <div
-                className={`absolute top-2 left-2 w-2 h-2 rounded-full ${theme.externalBadge}`}
-                title="معلم خارجي"
-              />
-            )}
-
-            {/* Teacher Name */}
-            <div className="font-bold text-gray-900 text-lg mb-2">{teacher.name}</div>
-
-            {/* Reason/Status Label */}
-            <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium mb-2 ${theme.badge}`}>
-              {reason}
-            </div>
-
-            {/* Subjects */}
-            {teacher.subjects && teacher.subjects.length > 0 && (
-              <div className="text-sm text-gray-600 mt-2">
-                <span className="font-medium">المواد:</span> {teacher.subjects.join(', ')}
-              </div>
-            )}
-          </button>
-        ))}
       </div>
     </div>
   );

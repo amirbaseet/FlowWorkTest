@@ -1,5 +1,43 @@
-import { Employee, Lesson } from '@/types';
 import { normalizeArabic } from '@/utils';
+
+interface Employee {
+  id: number;
+  name: string;
+  addons?: {
+    educator?: boolean;
+    educatorClassId?: string;
+  };
+}
+
+interface Lesson {
+  teacherId: number;
+  classId: string;
+  className?: string;
+  period: number;
+  day: string;
+  subject: string;
+  type?: string;
+}
+
+export interface AvailableTeacherInfo {
+  teacherId: number;
+  teacherName: string;
+  category: 'educator' | 'shared' | 'individual' | 'stay' | 'available';
+  priority: number;
+  currentLesson?: {
+    classId: string;
+    className: string;
+    subject: string;
+    period: number;
+    type: string;
+  };
+  canSwapWithLast?: boolean; // New: for stay/individual in last period
+  swapInfo?: {
+    currentPeriod: number;
+    lastPeriod: number;
+    sameClass: boolean;
+  };
+}
 
 interface GetAvailableTeachersParams {
   period: number;
@@ -7,186 +45,244 @@ interface GetAvailableTeachersParams {
   day: string;
   employees: Employee[];
   lessons: Lesson[];
-  absentTeacherIds?: number[];
-  alreadyAssignedIds?: number[];
-}
-
-interface AvailableTeacher {
-  teacher: Employee;
-  category: 'educator' | 'stay' | 'shared' | 'individual';
-  reason: string;
+  absentTeacherIds: number[];
+  alreadyAssignedIds: number[];
+  scheduleConfig?: {
+    periodsPerDay: number;
+  };
 }
 
 /**
- * Helper function to translate lesson types to Arabic reasons
+ * Get available substitute teachers with correct classification
+ *
+ * Categories:
+ * 1. Educator (Priority 1): Class educator, any availability status
+ * 2. Shared (Priority 2): Teaching a shared lesson (محوسب/مشترك/تفريقي)
+ * 3. Individual (Priority 3): Teaching lesson with "فردي/فردية" in subject
+ * 4. Stay (Priority 4): Teaching stay/makooth lesson
+ * 5. Available (Priority 5): Free period (no lesson at all)
  */
-const getLessonTypeReason = (type: string | undefined, subject?: string): string => {
-  if (!type) return 'متاح';
-  
-  const normalizedType = type.toLowerCase();
-  
-  if (normalizedType === 'stay' || normalizedType.includes('makooth') || normalizedType.includes('مكوث')) {
-    return 'حصة بقاء';
-  }
-  
-  if (normalizedType === 'individual' || normalizedType.includes('فردي')) {
-    return 'حصة فردية';
-  }
-  
-  if (normalizedType === 'duty' || normalizedType.includes('مناوبة')) {
-    return 'مناوبة';
-  }
-  
-  if (normalizedType === 'shared' || (subject && normalizeArabic(subject).includes('مشترك'))) {
-    return 'حصة مشتركة (ثانوي)';
-  }
-  
-  return 'متاح';
-};
-
-/**
- * Analyzes available substitute teachers based on their current schedule and categorizes them by priority
- * 
- * @param params - Parameters including period, class, day, employees, lessons, and exclusion lists
- * @returns Array of available teachers sorted by priority category
- */
-export function getAvailableTeachers(params: GetAvailableTeachersParams): AvailableTeacher[] {
+export function getAvailableTeachers(
+  params: GetAvailableTeachersParams
+): {
+  educatorCandidates: AvailableTeacherInfo[];
+  sharedCandidates: AvailableTeacherInfo[];
+  individualCandidates: AvailableTeacherInfo[];
+  stayCandidates: AvailableTeacherInfo[];
+  availableCandidates: AvailableTeacherInfo[];
+} {
   const {
     period,
     classId,
     day,
     employees,
     lessons,
-    absentTeacherIds = [],
-    alreadyAssignedIds = [],
+    absentTeacherIds,
+    alreadyAssignedIds,
+    scheduleConfig
   } = params;
 
   const normalizedDay = normalizeArabic(day);
-  const availableTeachers: AvailableTeacher[] = [];
+  const isLastPeriod = scheduleConfig ? period === scheduleConfig.periodsPerDay : false;
 
-  // Priority order for sorting
-  const categoryPriority: Record<string, number> = {
-    educator: 1,
-    stay: 2,
-    shared: 3,
-    individual: 4,
-  };
+  // Result arrays
+  const educatorCandidates: AvailableTeacherInfo[] = [];
+  const sharedCandidates: AvailableTeacherInfo[] = [];
+  const individualCandidates: AvailableTeacherInfo[] = [];
+  const stayCandidates: AvailableTeacherInfo[] = [];
+  const availableCandidates: AvailableTeacherInfo[] = [];
 
-  // Iterate through all employees
   for (const employee of employees) {
-    // 1. Filter out absent teachers
+    // Skip if absent
     if (absentTeacherIds.includes(employee.id)) {
       continue;
     }
 
-    // 2. Filter out already assigned teachers
+    // Skip if already assigned as substitute in this period
     if (alreadyAssignedIds.includes(employee.id)) {
       continue;
     }
 
-    // 3. Check if teacher is the class educator (highest priority)
-    if (
-      employee.addons?.educator &&
-      employee.addons.educatorClassId &&
-      String(employee.addons.educatorClassId) === String(classId)
-    ) {
-      availableTeachers.push({
-        teacher: employee,
-        category: 'educator',
-        reason: 'مربي الصف',
-      });
-      continue; // Move to next teacher (highest priority already assigned)
-    }
-
-    // 4. Find their lesson at the same period and day
-    const teacherLesson = lessons.find(
-      (lesson) =>
-        lesson.teacherId === employee.id &&
-        lesson.period === period &&
-        normalizeArabic(lesson.day) === normalizedDay
+    // Find teacher's current lesson at this period and day
+    const currentLesson = lessons.find(
+      l =>
+        l.teacherId === employee.id &&
+        l.period === period &&
+        normalizeArabic(l.day) === normalizedDay
     );
 
-    // If no lesson found, teacher is completely free (treat as individual - lowest priority)
-    if (!teacherLesson) {
-      availableTeachers.push({
-        teacher: employee,
-        category: 'individual',
-        reason: 'متاح تماماً',
+    // Check if this teacher is the class educator
+    const isTargetEducator =
+      employee.addons?.educator === true &&
+      employee.addons.educatorClassId === classId;
+
+    // Prepare current lesson info if exists
+    let lessonInfo: AvailableTeacherInfo['currentLesson'] | undefined;
+    if (currentLesson) {
+      lessonInfo = {
+        classId: currentLesson.classId,
+        className: currentLesson.className || currentLesson.classId,
+        subject: currentLesson.subject,
+        period: currentLesson.period,
+        type: currentLesson.type || 'actual'
+      };
+    }
+
+    // Check if can swap with last period (for stay/individual)
+    let canSwapWithLast = false;
+    let swapInfo: AvailableTeacherInfo['swapInfo'] | undefined;
+
+    if (!isLastPeriod && currentLesson && scheduleConfig) {
+      // Check if teacher has a lesson in last period
+      const lastPeriodLesson = lessons.find(
+        l =>
+          l.teacherId === employee.id &&
+          l.period === scheduleConfig.periodsPerDay &&
+          normalizeArabic(l.day) === normalizedDay
+      );
+
+      if (lastPeriodLesson) {
+        // Can swap if:
+        // 1. Current lesson is stay/individual
+        // 2. Last period lesson is in same class as target
+        const isStayOrIndividual =
+          currentLesson.type === 'stay' ||
+          currentLesson.type === 'makooth' ||
+          currentLesson.subject?.includes('فردي') ||
+          currentLesson.subject?.includes('فردية');
+
+        const lastPeriodSameClass = lastPeriodLesson.classId === classId;
+
+        if (isStayOrIndividual && lastPeriodSameClass) {
+          canSwapWithLast = true;
+          swapInfo = {
+            currentPeriod: period,
+            lastPeriod: scheduleConfig.periodsPerDay,
+            sameClass: true
+          };
+        }
+      }
+    }
+
+    // CATEGORY 1: CLASS EDUCATOR (highest priority)
+    if (isTargetEducator) {
+      let educatorPriority = 1;
+      let educatorCategory: AvailableTeacherInfo['category'] = 'educator';
+
+      // Sub-prioritize based on current activity
+      if (!currentLesson) {
+        educatorPriority = 1; // Free educator - best
+      } else if (
+        currentLesson.subject?.includes('فردي') ||
+        currentLesson.subject?.includes('فردية')
+      ) {
+        educatorPriority = 2; // Educator in individual
+      } else if (
+        currentLesson.type === 'stay' ||
+        currentLesson.type === 'makooth'
+      ) {
+        educatorPriority = 3; // Educator in stay
+      } else {
+        educatorPriority = 4; // Educator in actual lesson
+      }
+
+      educatorCandidates.push({
+        teacherId: employee.id,
+        teacherName: employee.name,
+        category: educatorCategory,
+        priority: educatorPriority,
+        currentLesson: lessonInfo,
+        canSwapWithLast,
+        swapInfo
+      });
+      continue; // Skip other categories if educator
+    }
+
+    // If no lesson - AVAILABLE
+    if (!currentLesson) {
+      availableCandidates.push({
+        teacherId: employee.id,
+        teacherName: employee.name,
+        category: 'available',
+        priority: 5,
+        canSwapWithLast: false
       });
       continue;
     }
 
-    // Check lesson type and subject
-    const lessonType = teacherLesson.type?.toLowerCase() || '';
-    const lessonSubject = normalizeArabic(teacherLesson.subject || '');
-
-    // 5a. Check if lesson type is 'stay' or 'makooth'
+    // CATEGORY 2: SHARED LESSONS (محوسب، مشترك، تفريقي)
     if (
-      lessonType === 'stay' ||
-      lessonType.includes('makooth') ||
-      lessonType.includes('مكوث') ||
-      lessonSubject.includes('مكوث')
+      currentLesson.type === 'shared' ||
+      currentLesson.type === 'computerized' ||
+      currentLesson.type === 'differential' ||
+      currentLesson.subject?.includes('مشترك') ||
+      currentLesson.subject?.includes('محوسب') ||
+      currentLesson.subject?.includes('تفريقي')
     ) {
-      availableTeachers.push({
-        teacher: employee,
-        category: 'stay',
-        reason: getLessonTypeReason('stay'),
-      });
-      continue;
-    }
-
-    // 5b. Check if lesson is shared lesson and teacher is secondary
-    const isSharedLesson =
-      lessonSubject.includes('مشترك') ||
-      lessonType === 'shared' ||
-      teacherLesson.teacherRole === 'secondary';
-
-    if (isSharedLesson) {
-      availableTeachers.push({
-        teacher: employee,
+      sharedCandidates.push({
+        teacherId: employee.id,
+        teacherName: employee.name,
         category: 'shared',
-        reason: 'معلم ثانوي في حصة مشتركة',
+        priority: 2,
+        currentLesson: lessonInfo,
+        canSwapWithLast,
+        swapInfo
       });
       continue;
     }
 
-    // 5c. Check if lesson type is 'individual'
-    if (lessonType === 'individual' || lessonType.includes('فردي')) {
-      availableTeachers.push({
-        teacher: employee,
+    // CATEGORY 3: INDIVIDUAL LESSONS (فردي، فردية)
+    // CRITICAL FIX: Check subject text, NOT whether teacher has schedule
+    if (
+      currentLesson.subject?.includes('فردي') ||
+      currentLesson.subject?.includes('فردية')
+    ) {
+      individualCandidates.push({
+        teacherId: employee.id,
+        teacherName: employee.name,
         category: 'individual',
-        reason: getLessonTypeReason('individual'),
+        priority: 3,
+        currentLesson: lessonInfo,
+        canSwapWithLast,
+        swapInfo
       });
       continue;
     }
 
-    // If lesson exists but doesn't fit any category above, it's likely a teaching lesson
-    // Teacher is busy - don't add to available list
+    // CATEGORY 4: STAY LESSONS (مكوث)
+    if (
+      currentLesson.type === 'stay' ||
+      currentLesson.type === 'makooth' ||
+      currentLesson.subject?.includes('مكوث')
+    ) {
+      stayCandidates.push({
+        teacherId: employee.id,
+        teacherName: employee.name,
+        category: 'stay',
+        priority: 4,
+        currentLesson: lessonInfo,
+        canSwapWithLast,
+        swapInfo
+      });
+      continue;
+    }
+
+    // If has actual lesson but doesn't match any category - skip
+    // (busy with real teaching)
   }
 
-  // 6. Sort results by priority: educators > stay > shared > individual
-  availableTeachers.sort((a, b) => {
-    const priorityDiff = categoryPriority[a.category] - categoryPriority[b.category];
-    
-    // If same priority, sort by teacher name (Arabic alphabetical)
-    if (priorityDiff === 0) {
-      return a.teacher.name.localeCompare(b.teacher.name, 'ar');
-    }
-    
-    return priorityDiff;
-  });
+  // Sort each category by priority
+  educatorCandidates.sort((a, b) => a.priority - b.priority);
+  sharedCandidates.sort((a, b) => a.priority - b.priority);
+  individualCandidates.sort((a, b) => a.priority - b.priority);
+  stayCandidates.sort((a, b) => a.priority - b.priority);
+  availableCandidates.sort((a, b) => a.priority - b.priority);
 
-  return availableTeachers;
-}
-
-/**
- * Groups available teachers by category for easier consumption by UI components
- */
-export function groupAvailableTeachersByCategory(teachers: AvailableTeacher[]) {
   return {
-    educators: teachers.filter((t) => t.category === 'educator'),
-    stayLessonTeachers: teachers.filter((t) => t.category === 'stay'),
-    sharedSecondaryTeachers: teachers.filter((t) => t.category === 'shared'),
-    individualTeachers: teachers.filter((t) => t.category === 'individual'),
+    educatorCandidates,
+    sharedCandidates,
+    individualCandidates,
+    stayCandidates,
+    availableCandidates
   };
 }
