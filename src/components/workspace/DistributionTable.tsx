@@ -13,6 +13,8 @@ import {
 import LessonTooltip from './LessonTooltip';
 import { AvailableSubsBadge, SharedLessonBadge } from './LessonBadges';
 import { countAvailableSubstitutes, calculateTeacherWorkload } from '@/utils/workspace/teacherHelpers';
+import { getClassSwapOpportunity } from '@/utils/workspace/getClassSwapOpportunity';
+import { RefreshCw } from 'lucide-react';
 
 interface DistributionTableProps {
   classes: ClassItem[];
@@ -237,6 +239,23 @@ const DistributionTable: React.FC<DistributionTableProps> = ({
                   lesson.type === 'shared' ||
                   lesson.type === 'computerized';
 
+                // NEW: Check if class has swap opportunity (for uncovered absences)
+                const hasSwapOpportunity = coverage.status === 'absent-uncovered' ?
+                  getClassSwapOpportunity(cls.id, period, dayName, lessons, 8).canSwap :
+                  false;
+                const swapInfo = hasSwapOpportunity ?
+                  getClassSwapOpportunity(cls.id, period, dayName, lessons, 8) :
+                  null;
+
+                // Debug logging
+                if (coverage.status === 'absent-uncovered') {
+                  console.log(`[Swap Check] Class: ${cls.name}, Period: ${period}`);
+                  console.log(`  Has swap opportunity: ${hasSwapOpportunity}`);
+                  if (swapInfo) {
+                    console.log(`  Last period: ${swapInfo.lastPeriod}, Type: ${swapInfo.swapType}`);
+                  }
+                }
+
                 return (
                   <td
                     key={slotKey}
@@ -304,6 +323,21 @@ const DistributionTable: React.FC<DistributionTableProps> = ({
                           <span>{coverage.icon}</span>
                           <span>{coverage.label}</span>
                         </div>
+                      )}
+
+                      {/* NEW: Smart Swap Button */}
+                      {hasSwapOpportunity && swapInfo && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onLessonClick(lesson, cls.name);
+                          }}
+                          className="w-full mt-1 px-1.5 py-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-md text-[7px] font-black flex items-center justify-center gap-1 transition-all shadow-sm hover:shadow-md"
+                        >
+                          <RefreshCw size={9} />
+                          <span>تبديل ذكي متاح</span>
+                          <span className="bg-white/20 px-1 rounded">حصة {swapInfo.lastPeriod}</span>
+                        </button>
                       )}
 
                       {/* Manual assignments (substitutes) */}
