@@ -11,7 +11,9 @@ interface ClassSwapOpportunity {
 
 /**
  * Check if a class has a swappable last period
- * A period is swappable if the teacher of the last period is free/individual/stay during the target period
+ * A period is swappable if:
+ * 1. The teacher of the last period is free/individual/stay during the target period
+ * 2. The teacher teaches THE SAME CLASS in the last period
  */
 export function getClassSwapOpportunity(
   classId: string,
@@ -44,10 +46,15 @@ export function getClassSwapOpportunity(
     return { canSwap: false, swapType: null };
   }
 
-  // NEW LOGIC: Get the teacher of the last period
+  // NEW CRITICAL CHECK: Verify the last period lesson is for THE SAME CLASS
+  if (lastPeriodLesson.classId !== classId) {
+    return { canSwap: false, swapType: null };
+  }
+
+  // Get the teacher of the last period
   const lastPeriodTeacherId = lastPeriodLesson.teacherId;
 
-  // NEW LOGIC: Check what this teacher is doing during the TARGET period (absence period)
+  // Check what this teacher is doing during the TARGET period (absence period)
   const teacherTargetPeriodLesson = lessons.find(
     l => l.teacherId === lastPeriodTeacherId &&
          l.period === targetPeriod &&
