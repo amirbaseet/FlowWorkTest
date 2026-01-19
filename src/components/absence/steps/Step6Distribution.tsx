@@ -1,7 +1,7 @@
 // src/components/absence/steps/Step6Distribution.tsx
 
 import React from 'react';
-import { Zap, Activity, BrainCircuit, BriefcaseBusiness, Info, ChevronDown, CheckCircle2, User, Layers, Coffee, Ban, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Zap, Activity, BrainCircuit, BriefcaseBusiness, Info, ChevronDown, CheckCircle2, User, Layers, Coffee, Ban, ChevronRight, ChevronLeft, Save } from 'lucide-react';
 import { Employee, ClassItem, Lesson, ScheduleConfig, CalendarEvent, EngineContext } from '@/types';
 import { getSafeDayName } from '@/utils';
 import GroupAbsenceBoard from '../../GroupAbsenceBoard';
@@ -34,6 +34,7 @@ interface Step6DistributionProps {
     onToggleAssistantCoverage: (slotKey: string) => void;
     onToggleClassMerge: (slotKey: string) => void;
     assignmentVersion: number;
+    onSave: () => void;
     onPrev: () => void;
     onNext: () => void;
 }
@@ -66,6 +67,7 @@ export const Step6Distribution: React.FC<Step6DistributionProps> = ({
     onToggleAssistantCoverage,
     onToggleClassMerge,
     assignmentVersion,
+    onSave,
     onPrev,
     onNext
 }) => {
@@ -192,19 +194,36 @@ export const Step6Distribution: React.FC<Step6DistributionProps> = ({
             </div>
 
             {/* Footer Navigation */}
-            <div className="flex justify-between pt-4 shrink-0">
+            <div className="flex justify-between items-center pt-4 shrink-0">
+                {/* LEFT: Previous button */}
                 <button
                     onClick={onPrev}
-                    className="px-8 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50"
+                    className="px-8 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 flex items-center gap-2"
                 >
-                    ← السابق
+                    <ChevronRight size={16} />
+                    السابق
                 </button>
-                <button
-                    onClick={onNext}
-                    className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700"
-                >
-                    التالي ←
-                </button>
+                
+                {/* RIGHT: Save + Next buttons */}
+                <div className="flex gap-3">
+                    {/* Save button */}
+                    <button
+                        onClick={onSave}
+                        className="px-6 py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl font-bold hover:bg-emerald-100 transition-all flex items-center gap-2"
+                    >
+                        <Save size={16} />
+                        حفظ
+                    </button>
+                    
+                    {/* Next button */}
+                    <button
+                        onClick={onNext}
+                        className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 flex items-center gap-2"
+                    >
+                        التالي
+                        <ChevronLeft size={16} />
+                    </button>
+                </div>
             </div>
         </div>
     );

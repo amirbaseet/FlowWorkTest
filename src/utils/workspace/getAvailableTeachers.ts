@@ -31,12 +31,15 @@ export interface AvailableTeacherInfo {
     period: number;
     type: string;
   };
-  canSwapWithLast?: boolean; // New: for stay/individual in last period
+  canSwapWithLast?: boolean;
   swapInfo?: {
     currentPeriod: number;
     lastPeriod: number;
     sameClass: boolean;
   };
+  hasLessonsToday?: boolean; // NEW: Does teacher have any lessons this day?
+  isOnCall?: boolean; // NEW: Is teacher explicitly called to school?
+  isUnavailable?: boolean; // NEW: Is teacher busy or absent (in pool but can't be selected)
 }
 
 interface GetAvailableTeachersParams {
@@ -50,17 +53,19 @@ interface GetAvailableTeachersParams {
   scheduleConfig?: {
     periodsPerDay: number;
   };
+  reservePoolIds?: number[]; // NEW: Explicitly added to reserve pool
 }
 
 /**
  * Get available substitute teachers with correct classification
  *
  * Categories:
- * 1. Educator (Priority 1): Class educator, any availability status
+ * 1. Educator (Priority 1-4): Class educator, sub-prioritized by current activity
  * 2. Shared (Priority 2): Teaching a shared lesson (محوسب/مشترك/تفريقي)
  * 3. Individual (Priority 3): Teaching lesson with "فردي/فردية" in subject
  * 4. Stay (Priority 4): Teaching stay/makooth lesson
- * 5. Available (Priority 5): Free period (no lesson at all)
+ * 5. Available (Priority 5): Free period AND has lessons today (at school)
+ * 6. On-Call (Priority 6): No lessons today BUT explicitly added to reserve pool
  */
 export function getAvailableTeachers(
   params: GetAvailableTeachersParams
@@ -70,6 +75,7 @@ export function getAvailableTeachers(
   individualCandidates: AvailableTeacherInfo[];
   stayCandidates: AvailableTeacherInfo[];
   availableCandidates: AvailableTeacherInfo[];
+  onCallCandidates: AvailableTeacherInfo[]; // NEW
 } {
   const {
     period,
@@ -79,7 +85,8 @@ export function getAvailableTeachers(
     lessons,
     absentTeacherIds,
     alreadyAssignedIds,
-    scheduleConfig
+    scheduleConfig,
+    reservePoolIds = [] // NEW: Default to empty array
   } = params;
 
   const normalizedDay = normalizeArabic(day);
@@ -91,6 +98,7 @@ export function getAvailableTeachers(
   const individualCandidates: AvailableTeacherInfo[] = [];
   const stayCandidates: AvailableTeacherInfo[] = [];
   const availableCandidates: AvailableTeacherInfo[] = [];
+  const onCallCandidates: AvailableTeacherInfo[] = []; // NEW
 
   for (const employee of employees) {
     // Skip if absent
@@ -102,6 +110,11 @@ export function getAvailableTeachers(
     if (alreadyAssignedIds.includes(employee.id)) {
       continue;
     }
+
+    // ✅ CRITICAL FIX: Check if teacher has ANY lessons on this day
+    const hasLessonsToday = lessons.some(
+      l => l.teacherId === employee.id && normalizeArabic(l.day) === normalizedDay
+    );
 
     // Find teacher's current lesson at this period and day
     const currentLesson = lessons.find(
@@ -193,20 +206,43 @@ export function getAvailableTeachers(
         priority: educatorPriority,
         currentLesson: lessonInfo,
         canSwapWithLast,
-        swapInfo
+        swapInfo,
+        hasLessonsToday,
+        isOnCall: false
       });
       continue; // Skip other categories if educator
     }
 
-    // If no lesson - AVAILABLE
-    if (!currentLesson) {
+    // ✅ CRITICAL FIX: If no lesson - only AVAILABLE if hasLessonsToday
+    if (!currentLesson && hasLessonsToday) {
       availableCandidates.push({
         teacherId: employee.id,
         teacherName: employee.name,
         category: 'available',
         priority: 5,
-        canSwapWithLast: false
+        canSwapWithLast: false,
+        hasLessonsToday: true,
+        isOnCall: false
       });
+      continue;
+    }
+
+    // ✅ NEW: If no lesson - check if on-call (in reserve pool)
+    if (!currentLesson && !hasLessonsToday && reservePoolIds.includes(employee.id)) {
+      onCallCandidates.push({
+        teacherId: employee.id,
+        teacherName: employee.name,
+        category: 'available',
+        priority: 6, // Lowest priority
+        canSwapWithLast: false,
+        hasLessonsToday: false,
+        isOnCall: true
+      });
+      continue;
+    }
+
+    // If no lessons today and not in pool - skip (not at school)
+    if (!currentLesson) {
       continue;
     }
 
@@ -226,7 +262,9 @@ export function getAvailableTeachers(
         priority: 2,
         currentLesson: lessonInfo,
         canSwapWithLast,
-        swapInfo
+        swapInfo,
+        hasLessonsToday,
+        isOnCall: false
       });
       continue;
     }
@@ -244,7 +282,9 @@ export function getAvailableTeachers(
         priority: 3,
         currentLesson: lessonInfo,
         canSwapWithLast,
-        swapInfo
+        swapInfo,
+        hasLessonsToday,
+        isOnCall: false
       });
       continue;
     }
@@ -262,7 +302,9 @@ export function getAvailableTeachers(
         priority: 4,
         currentLesson: lessonInfo,
         canSwapWithLast,
-        swapInfo
+        swapInfo,
+        hasLessonsToday,
+        isOnCall: false
       });
       continue;
     }
@@ -277,12 +319,14 @@ export function getAvailableTeachers(
   individualCandidates.sort((a, b) => a.priority - b.priority);
   stayCandidates.sort((a, b) => a.priority - b.priority);
   availableCandidates.sort((a, b) => a.priority - b.priority);
+  onCallCandidates.sort((a, b) => a.priority - b.priority); // NEW
 
   return {
     educatorCandidates,
     sharedCandidates,
     individualCandidates,
     stayCandidates,
-    availableCandidates
+    availableCandidates,
+    onCallCandidates // NEW
   };
 }

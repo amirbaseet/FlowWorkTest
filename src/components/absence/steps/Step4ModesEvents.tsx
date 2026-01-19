@@ -1,7 +1,7 @@
 // src/components/absence/steps/Step4ModesEvents.tsx
 
 import React from 'react';
-import { Zap, Edit3, CalendarPlus, Info, CheckCircle2 } from 'lucide-react';
+import { Zap, Edit3, CalendarPlus, Info, CheckCircle2, Save, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CalendarEvent } from '@/types';
 
 interface Step4ModesEventsProps {
@@ -10,6 +10,7 @@ interface Step4ModesEventsProps {
     activeExternalIds: number[];
     onOpenRequestForm: (prefill: any) => void;
     setStep: React.Dispatch<React.SetStateAction<1 | 2 | 3 | 4 | 5 | 6 | 7>>;
+    onSave: () => void;
     onPrev: () => void;
     onNext: () => void;
 }
@@ -20,6 +21,7 @@ export const Step4ModesEvents: React.FC<Step4ModesEventsProps> = ({
     activeExternalIds,
     onOpenRequestForm,
     setStep,
+    onSave,
     onPrev,
     onNext
 }) => {
@@ -124,19 +126,36 @@ export const Step4ModesEvents: React.FC<Step4ModesEventsProps> = ({
             </div>
 
             {/* Footer Navigation */}
-            <div className="flex justify-between pt-4">
+            <div className="flex justify-between items-center pt-4">
+                {/* LEFT: Previous button */}
                 <button
                     onClick={onPrev}
-                    className="px-8 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50"
+                    className="px-8 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 flex items-center gap-2"
                 >
-                    ← السابق
+                    <ChevronRight size={16} />
+                    السابق
                 </button>
-                <button
-                    onClick={onNext}
-                    className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700"
-                >
-                    التالي ←
-                </button>
+                
+                {/* RIGHT: Save + Next buttons */}
+                <div className="flex gap-3">
+                    {/* Save button */}
+                    <button
+                        onClick={onSave}
+                        className="px-6 py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl font-bold hover:bg-emerald-100 transition-all flex items-center gap-2"
+                    >
+                        <Save size={16} />
+                        حفظ
+                    </button>
+                    
+                    {/* Next button */}
+                    <button
+                        onClick={onNext}
+                        className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 flex items-center gap-2"
+                    >
+                        التالي
+                        <ChevronLeft size={16} />
+                    </button>
+                </div>
             </div>
         </div>
     );

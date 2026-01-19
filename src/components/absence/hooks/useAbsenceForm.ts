@@ -34,6 +34,8 @@ interface UseAbsenceFormProps {
     addToast: (msg: string, type: 'success' | 'error' | 'info' | 'warning') => void;
     onAddSubstitution?: (sub: any) => void;
     onRemoveSubstitution?: (absentTeacherId: number, period: number, date: string) => void;
+    onSubmit?: () => void | Promise<void>;
+    onClose?: () => void;
 }
 
 export const useAbsenceForm = ({
@@ -52,7 +54,9 @@ export const useAbsenceForm = ({
     events,
     addToast,
     onAddSubstitution,
-    onRemoveSubstitution
+    onRemoveSubstitution,
+    onSubmit,
+    onClose
 }: UseAbsenceFormProps) => {
     // Steps
     const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7>(initialStep as any);
@@ -756,6 +760,80 @@ export const useAbsenceForm = ({
         setStep(newStep);
     }, []);
     
+    /**
+     * Validates the current step data
+     */
+    const validateCurrentStep = useCallback(() => {
+        switch (step) {
+            case 1:
+                // Step 1: Must have at least one teacher selected
+                if (selectedTeachers.length === 0) {
+                    return { valid: false, message: 'يجب اختيار معلم واحد على الأقل' };
+                }
+                return { valid: true };
+            
+            case 2:
+                // Step 2: All teachers must have valid configuration
+                for (const teacher of selectedTeachers) {
+                    if (!teacher.startDate || !teacher.endDate) {
+                        return { valid: false, message: 'يجب تحديد تواريخ الغياب لجميع المعلمين' };
+                    }
+                    if (teacher.type === 'PARTIAL' && teacher.affectedPeriods.length === 0) {
+                        return { valid: false, message: 'يجب تحديد حصة واحدة على الأقل للغياب الجزئي' };
+                    }
+                    if (!teacher.reason) {
+                        return { valid: false, message: 'يجب تحديد سبب الغياب لجميع المعلمين' };
+                    }
+                }
+                return { valid: true };
+            
+            case 3:
+            case 4:
+            case 5:
+            case 6:
+                // Optional steps - always valid
+                return { valid: true };
+            
+            default:
+                return { valid: true };
+        }
+    }, [step, selectedTeachers]);
+
+    /**
+     * Save without navigating to next step
+     */
+    const handleSaveWithoutNext = useCallback(async () => {
+        // Validate current step
+        const validation = validateCurrentStep();
+        if (!validation.valid) {
+            addToast(validation.message || 'يرجى إكمال البيانات المطلوبة', 'error');
+            return false;
+        }
+
+        // Call the submit handler (same as final submit)
+        try {
+            if (onSubmit) {
+                await onSubmit();
+            }
+            addToast('تم حفظ التغييرات بنجاح', 'success');
+            return true;
+        } catch (error) {
+            addToast('حدث خطأ أثناء الحفظ', 'error');
+            console.error('Save error:', error);
+            return false;
+        }
+    }, [validateCurrentStep, onSubmit, addToast]);
+
+    /**
+     * Save and close the form (optional variant)
+     */
+    const handleSaveAndClose = useCallback(async () => {
+        const success = await handleSaveWithoutNext();
+        if (success && onClose) {
+            onClose();
+        }
+    }, [handleSaveWithoutNext, onClose]);
+    
     return {
         step, setStep,
         selectedTeachers, setSelectedTeachers,
@@ -805,6 +883,9 @@ export const useAbsenceForm = ({
         handleWizardNext,
         goToNextStep,
         goToPrevStep,
-        goToStep
+        goToStep,
+        handleSaveWithoutNext,
+        handleSaveAndClose,
+        validateCurrentStep
     };
 };

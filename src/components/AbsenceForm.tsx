@@ -74,6 +74,68 @@ const AbsenceForm: React.FC<AbsenceFormProps> = ({
 }) => {
     const { addToast } = useToast();
 
+    // Define handleSubmit before the hook so we can pass it as onSubmit
+    const handleSubmitCallback = React.useCallback((formState: {
+        selectedTeachers: any[];
+        substitutions: any[];
+        assistantCoverage: Record<string, boolean>;
+        classMerges: Record<string, any>;
+        boardViewDate: string;
+        activeExternalIds: number[];
+    }) => {
+        const { selectedTeachers, substitutions, assistantCoverage, classMerges, boardViewDate, activeExternalIds } = formState;
+        
+        if (selectedTeachers.length === 0) {
+            addToast('يجب تحديد معلم واحد على الأقل', 'error');
+            return;
+        }
+        
+        // 1. Save reserve pool if callback provided
+        if (onPoolUpdate && activeExternalIds) {
+            onPoolUpdate(activeExternalIds);
+        }
+        
+        // 2. Create absence records
+        const absencesList = createAbsenceRecords(selectedTeachers, scheduleConfig);
+        
+        // 3. Start with existing substitutions
+        const allSubstitutions = [...substitutions];
+        
+        // 4. Add assistant coverage
+        const assistantSubs = createAssistantCoverageSubstitutions(
+            assistantCoverage,
+            boardViewDate,
+            lessons
+        );
+        allSubstitutions.push(...assistantSubs);
+        
+        // 5. Add class merges
+        const mergeSubs = createClassMergeSubstitutions(
+            classMerges,
+            boardViewDate,
+            lessons
+        );
+        allSubstitutions.push(...mergeSubs);
+        
+        // 6. Auto-assign classroom assistants
+        const autoAssistantSubs = autoAssignClassroomAssistants(
+            selectedTeachers,
+            employees,
+            classes,
+            lessons,
+            scheduleConfig,
+            boardViewDate,
+            allSubstitutions,
+            assistantCoverage,
+            classMerges,
+            addToast
+        );
+        allSubstitutions.push(...autoAssistantSubs);
+        
+        // 7. Save
+        onSave(absencesList, allSubstitutions);
+    }, [employees, classes, lessons, scheduleConfig, onSave, onPoolUpdate, addToast]);
+
     const {
         step, setStep,
         selectedTeachers, setSelectedTeachers,
@@ -108,7 +170,8 @@ const AbsenceForm: React.FC<AbsenceFormProps> = ({
         handleToggleClassMerge, handleBoardUnassign, handleAssignSubstitute,
         activeReservePool,
         toggleWizardSelection, handleWizardNext,
-        goToNextStep, goToPrevStep, goToStep
+        goToNextStep, goToPrevStep, goToStep,
+        handleSaveWithoutNext
     } = useAbsenceForm({
         initialDate,
         initialStep: initialStep as 1 | 2 | 3 | 4 | 5 | 6 | 7,
@@ -125,57 +188,28 @@ const AbsenceForm: React.FC<AbsenceFormProps> = ({
         events,
         addToast,
         onAddSubstitution,
-        onRemoveSubstitution
+        onRemoveSubstitution,
+        onSubmit: () => handleSubmitCallback({
+            selectedTeachers,
+            substitutions,
+            assistantCoverage,
+            classMerges,
+            boardViewDate,
+            activeExternalIds
+        }),
+        onClose: onCancel
     });
 
-
-
-
+    // Wrapper for final submit from Step 7
     const handleSubmit = () => {
-        if (selectedTeachers.length === 0) {
-            addToast('يجب تحديد معلم واحد على الأقل', 'error');
-            return;
-        }
-        
-        // 1. Create absence records
-        const absencesList = createAbsenceRecords(selectedTeachers, scheduleConfig);
-        
-        // 2. Start with existing substitutions
-        const allSubstitutions = [...substitutions];
-        
-        // 3. Add assistant coverage
-        const assistantSubs = createAssistantCoverageSubstitutions(
-            assistantCoverage,
-            boardViewDate,
-            lessons
-        );
-        allSubstitutions.push(...assistantSubs);
-        
-        // 4. Add class merges
-        const mergeSubs = createClassMergeSubstitutions(
-            classMerges,
-            boardViewDate,
-            lessons
-        );
-        allSubstitutions.push(...mergeSubs);
-        
-        // 5. Auto-assign classroom assistants
-        const autoAssistantSubs = autoAssignClassroomAssistants(
+        handleSubmitCallback({
             selectedTeachers,
-            employees,
-            classes,
-            lessons,
-            scheduleConfig,
-            boardViewDate,
-            allSubstitutions,
+            substitutions,
             assistantCoverage,
             classMerges,
-            addToast
-        );
-        allSubstitutions.push(...autoAssistantSubs);
-        
-        // 6. Save
-        onSave(absencesList, allSubstitutions);
+            boardViewDate,
+            activeExternalIds
+        });
     };
 
 
@@ -256,6 +290,7 @@ const AbsenceForm: React.FC<AbsenceFormProps> = ({
                         searchTerm={searchTerm}
                         onSearchChange={setSearchTerm}
                         onToggleTeacher={handleTeacherToggle}
+                        onSave={handleSaveWithoutNext}
                         onNext={goToNextStep}
                     />
                 )}
@@ -270,6 +305,7 @@ const AbsenceForm: React.FC<AbsenceFormProps> = ({
                         onUpdateTeacherConfig={updateTeacherConfig}
                         onApplyToAll={handleApplyToAllDetails}
                         preAbsentTeachers={preAbsentTeachers}
+                        onSave={handleSaveWithoutNext}
                         onPrev={goToPrevStep}
                         onNext={goToNextStep}
                     />
@@ -278,15 +314,21 @@ const AbsenceForm: React.FC<AbsenceFormProps> = ({
                 {step === 3 && (
                     <Step3PoolManagement
                         activeExternalIds={activeExternalIds}
-                        setActiveExternalIds={setActiveExternalIds}
                         employees={employees}
-                        availableExternals={availableExternals}
-                        availableInternalCandidates={availableInternalCandidates}
-                        selectedTeachers={selectedTeachers}
-                        boardViewDate={boardViewDate}
+                        onTogglePool={(id: number) => {
+                            const newIds = activeExternalIds.includes(id)
+                                ? activeExternalIds.filter(x => x !== id)
+                                : [...activeExternalIds, id];
+                            setActiveExternalIds(newIds);
+                            if (onPoolUpdate) {
+                                onPoolUpdate(newIds);
+                            }
+                        }}
+                        searchTerm={searchTerm}
+                        onSearchChange={setSearchTerm}
+                        globalStartDate={globalStartDate}
                         lessons={lessons}
-                        onPoolUpdate={onPoolUpdate}
-                        onAddToast={addToast}
+                        onSave={handleSaveWithoutNext}
                         onPrev={goToPrevStep}
                         onNext={goToNextStep}
                     />
@@ -299,6 +341,7 @@ const AbsenceForm: React.FC<AbsenceFormProps> = ({
                         activeExternalIds={activeExternalIds}
                         onOpenRequestForm={onOpenRequestForm}
                         setStep={setStep}
+                        onSave={handleSaveWithoutNext}
                         onPrev={goToPrevStep}
                         onNext={goToNextStep}
                     />
@@ -314,6 +357,7 @@ const AbsenceForm: React.FC<AbsenceFormProps> = ({
                         lessons={lessons}
                         classes={classes}
                         periods={periods}
+                        onSave={handleSaveWithoutNext}
                         onPrev={goToPrevStep}
                         onNext={goToNextStep}
                     />
@@ -363,6 +407,7 @@ const AbsenceForm: React.FC<AbsenceFormProps> = ({
                         onToggleAssistantCoverage={handleToggleAssistantCoverage}
                         onToggleClassMerge={handleToggleClassMerge}
                         assignmentVersion={assignmentVersion}
+                        onSave={handleSaveWithoutNext}
                         onPrev={goToPrevStep}
                         onNext={goToNextStep}
                     />

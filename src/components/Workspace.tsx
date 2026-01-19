@@ -212,14 +212,16 @@ const Workspace: React.FC<WorkspaceProps> = ({
               s.period === manualAssignments.selectedLesson!.period
           )
           .map(s => s.substituteId),
-        scheduleConfig: scheduleConfig
+        scheduleConfig: scheduleConfig,
+        reservePoolIds: localPoolIds // ✅ NEW: Pass reserve pool IDs
       })
     : {
         educatorCandidates: [],
         sharedCandidates: [],
         individualCandidates: [],
         stayCandidates: [],
-        availableCandidates: []
+        availableCandidates: [],
+        onCallCandidates: [] // ✅ NEW: Include onCallCandidates in fallback
       };
 
   const slotCandidates = manualAssignments.activeSlot
@@ -387,6 +389,8 @@ const Workspace: React.FC<WorkspaceProps> = ({
           }
         }
         availableTeachers={availableTeachers}
+        activeExternalIds={localPoolIds} // ✅ NEW: Pass reserve pool IDs
+        employees={employees} // ✅ NEW: Pass employees for lookup
         onSelectTeacher={(teacherId, swapWithLast) => {
           if (swapWithLast) {
             // Handle swap logic - teacher will be assigned and can leave early

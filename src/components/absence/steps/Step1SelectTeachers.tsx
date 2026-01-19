@@ -1,7 +1,7 @@
 // src/components/absence/steps/Step1SelectTeachers.tsx
 
 import React from 'react';
-import { Search, CalendarClock, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Search, CalendarClock, ArrowLeft, CheckCircle2, Save, ChevronLeft } from 'lucide-react';
 import { Employee } from '@/types';
 
 interface Step1SelectTeachersProps {
@@ -18,6 +18,7 @@ interface Step1SelectTeachersProps {
     onSearchChange: (term: string) => void;
     // Actions
     onToggleTeacher: (id: number) => void;
+    onSave: () => void;
     onNext: () => void;
 }
 
@@ -31,6 +32,7 @@ export const Step1SelectTeachers: React.FC<Step1SelectTeachersProps> = ({
     searchTerm,
     onSearchChange,
     onToggleTeacher,
+    onSave,
     onNext
 }) => {
     return (
@@ -115,14 +117,25 @@ export const Step1SelectTeachers: React.FC<Step1SelectTeachersProps> = ({
                 })}
             </div>
 
-            {/* Next Button */}
-            <div className="flex justify-end pt-4">
+            {/* Footer Navigation */}
+            <div className="flex justify-end items-center gap-3 pt-4">
+                {/* Save button */}
+                <button
+                    onClick={onSave}
+                    className="px-6 py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl font-bold hover:bg-emerald-100 transition-all flex items-center gap-2"
+                >
+                    <Save size={16} />
+                    حفظ
+                </button>
+                
+                {/* Next button */}
                 <button
                     onClick={onNext}
                     disabled={selectedList.length === 0}
-                    className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-700"
+                    className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-700 flex items-center gap-2"
                 >
-                    التالي ←
+                    التالي
+                    <ChevronLeft size={16} />
                 </button>
             </div>
         </div>

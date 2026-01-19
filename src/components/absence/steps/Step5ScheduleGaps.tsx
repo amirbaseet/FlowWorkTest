@@ -1,7 +1,7 @@
 // src/components/absence/steps/Step5ScheduleGaps.tsx
 
 import React from 'react';
-import { AlertTriangle, Shield, CheckCircle2, Zap, UserCheck, UserPlus, BookOpen, Coffee } from 'lucide-react';
+import { AlertTriangle, Shield, CheckCircle2, Zap, UserCheck, UserPlus, BookOpen, Coffee, Save, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Employee, Lesson, ClassItem, CalendarEvent } from '@/types';
 import { SelectedTeacherState } from '../hooks/useAbsenceForm';
 import { normalizeArabic, getSafeDayName } from '@/utils';
@@ -15,6 +15,7 @@ interface Step5ScheduleGapsProps {
     lessons: Lesson[];
     classes: ClassItem[];
     periods: number[];
+    onSave: () => void;
     onPrev: () => void;
     onNext: () => void;
 }
@@ -28,6 +29,7 @@ export const Step5ScheduleGaps: React.FC<Step5ScheduleGapsProps> = ({
     lessons,
     classes,
     periods,
+    onSave,
     onPrev,
     onNext
 }) => {
@@ -218,19 +220,36 @@ export const Step5ScheduleGaps: React.FC<Step5ScheduleGapsProps> = ({
             </div>
 
             {/* Footer Navigation */}
-            <div className="flex justify-between pt-4">
+            <div className="flex justify-between items-center pt-4">
+                {/* LEFT: Previous button */}
                 <button
                     onClick={onPrev}
-                    className="px-8 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50"
+                    className="px-8 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 flex items-center gap-2"
                 >
-                    ← السابق
+                    <ChevronRight size={16} />
+                    السابق
                 </button>
-                <button
-                    onClick={onNext}
-                    className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700"
-                >
-                    التالي ←
-                </button>
+                
+                {/* RIGHT: Save + Next buttons */}
+                <div className="flex gap-3">
+                    {/* Save button */}
+                    <button
+                        onClick={onSave}
+                        className="px-6 py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl font-bold hover:bg-emerald-100 transition-all flex items-center gap-2"
+                    >
+                        <Save size={16} />
+                        حفظ
+                    </button>
+                    
+                    {/* Next button */}
+                    <button
+                        onClick={onNext}
+                        className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 flex items-center gap-2"
+                    >
+                        التالي
+                        <ChevronLeft size={16} />
+                    </button>
+                </div>
             </div>
         </div>
     );

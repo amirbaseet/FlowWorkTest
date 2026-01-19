@@ -1,288 +1,279 @@
 // src/components/absence/steps/Step3PoolManagement.tsx
 
 import React from 'react';
-import { Briefcase, Globe, Users, Activity, Check, UserPlus, X } from 'lucide-react';
+import { Briefcase, UserPlus, Trash2, AlertCircle, Info, Save, ChevronLeft, ChevronRight, Phone, CheckCircle2 } from 'lucide-react';
 import { Employee, Lesson } from '@/types';
-import { SelectedTeacherState } from '../hooks/useAbsenceForm';
-import { normalizeArabic, getSafeDayName } from '@/utils';
-
-interface InternalCandidate {
-    emp: Employee;
-    status: 'FULL' | 'PARTIAL';
-    label: string;
-    details?: string;
-}
+import { normalizeArabic } from '@/utils';
 
 interface Step3PoolManagementProps {
     activeExternalIds: number[];
-    setActiveExternalIds: React.Dispatch<React.SetStateAction<number[]>>;
     employees: Employee[];
-    availableExternals: Employee[];
-    availableInternalCandidates: InternalCandidate[];
-    selectedTeachers: SelectedTeacherState[];
-    boardViewDate: string;
+    onTogglePool: (id: number) => void;
+    searchTerm: string;
+    onSearchChange: (term: string) => void;
+    globalStartDate: string;
     lessons: Lesson[];
-    onPoolUpdate?: (ids: number[]) => void;
-    onAddToast: (msg: string, type: 'success' | 'error' | 'info' | 'warning') => void;
+    onSave: () => void;
     onPrev: () => void;
     onNext: () => void;
 }
 
 export const Step3PoolManagement: React.FC<Step3PoolManagementProps> = ({
     activeExternalIds,
-    setActiveExternalIds,
     employees,
-    availableExternals,
-    availableInternalCandidates,
-    selectedTeachers,
-    boardViewDate,
+    onTogglePool,
+    searchTerm,
+    onSearchChange,
+    globalStartDate,
     lessons,
-    onPoolUpdate,
-    onAddToast,
+    onSave,
     onPrev,
     onNext
 }) => {
-    // Calculate busy teachers count
-    const busyCount = employees.filter(e => {
-        if (e.constraints.isExternal) return false;
-        if (selectedTeachers.some(t => t.id === e.id)) return false;
-        if (activeExternalIds.includes(e.id)) return false;
-        if (availableInternalCandidates.some(c => c.emp.id === e.id)) return false;
-        
-        // Exclude teachers with no lessons today
-        const dayName = getSafeDayName(boardViewDate);
-        const normDay = normalizeArabic(dayName);
-        const hasLessonsToday = lessons.some(l =>
-            l.teacherId === e.id && normalizeArabic(l.day) === normDay
+    // Helper to check if teacher has lessons on the absence date
+    const hasLessonsOnDate = (teacherId: number): boolean => {
+        const date = new Date(globalStartDate);
+        const dayOfWeek = date.getDay();
+        const DAYS_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+        const dayName = DAYS_AR[dayOfWeek];
+        return lessons.some(
+            l => l.teacherId === teacherId && normalizeArabic(l.day) === normalizeArabic(dayName)
         );
-        if (!hasLessonsToday) return false;
-        
-        const validTeacherRoles = ['teacher', 'teachers', 'معلم', 'معلمة'];
-        if (!validTeacherRoles.includes(e.baseRoleId?.toLowerCase() || '')) {
-            if (!e.subjects || e.subjects.length === 0) return false;
-        }
-        return true;
-    }).length;
-
-    const handleToggleExternal = (id: number) => {
-        const newIds = activeExternalIds.includes(id)
-            ? activeExternalIds.filter(x => x !== id)
-            : [...activeExternalIds, id];
-        setActiveExternalIds(newIds);
     };
 
-    const handleRemoveFromPool = (id: number, name: string) => {
-        const newIds = activeExternalIds.filter(x => x !== id);
-        setActiveExternalIds(newIds);
-        if (onPoolUpdate) {
-            onPoolUpdate(newIds);
-        }
-        onAddToast('تم إزالة ' + name + ' من قائمة الإشغال', 'success');
-    };
+    // Split teachers into categories
+    const availableTeachers = employees.filter(emp =>
+        !activeExternalIds.includes(emp.id) && hasLessonsOnDate(emp.id)
+    );
+    
+    const onCallTeachers = employees.filter(emp =>
+        !activeExternalIds.includes(emp.id) && !hasLessonsOnDate(emp.id)
+    );
+
+    // Filter by search term
+    const filteredAvailable = availableTeachers.filter(emp =>
+        emp.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    const filteredOnCall = onCallTeachers.filter(emp =>
+        emp.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="bg-gradient-to-br from-indigo-50 to-violet-50 p-6 rounded-[2.5rem] border border-indigo-100">
-                <div className="flex items-center justify-between mb-4">
-                    <div>
-                        <h4 className="font-black text-lg text-indigo-900 flex items-center gap-2">
-                            <Briefcase size={20} className="text-indigo-600" /> إدارة بنك الاحتياط اليومي
-                        </h4>
-                        <p className="text-xs text-indigo-700 mt-1">
-                            حدد المعلمين المتاحين للاستدعاء الفوري (خارجي وداخلي)
-                        </p>
-                    </div>
-                    <div className="bg-white px-4 py-2 rounded-xl shadow-sm">
-                        <span className="text-xs font-black text-indigo-600">{activeExternalIds.length} مفعّل</span>
-                    </div>
+            {/* Header */}
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-[2.5rem] border border-amber-100">
+                <div className="mb-2">
+                    <h4 className="font-black text-lg text-amber-900 flex items-center gap-2">
+                        <Briefcase size={20} className="text-amber-600" />
+                        بنك الاحتياط
+                    </h4>
+                    <p className="text-xs text-amber-700 mt-1">
+                        اختر المعلمين المتاحين للتغطية (لديهم فراغ أو يمكن استدعاؤهم)
+                    </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Active Pool - القائمة المفعلة */}
-                    <div className="space-y-3 md:col-span-3 mb-4">
-                        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-4 rounded-2xl">
-                            <h5 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2 justify-center">
-                                <Briefcase size={16} /> قائمة الإشغال المفعّلة ({activeExternalIds.length})
-                            </h5>
-                            <p className="text-xs text-white/80 text-center mt-1">المعلمون المتاحون للمراحل التالية</p>
-                        </div>
-                        <div className="flex flex-wrap gap-2 min-h-[60px] p-3 bg-white rounded-xl border-2 border-dashed border-indigo-300">
-                            {activeExternalIds.length > 0 ? activeExternalIds.map(id => {
-                                const emp = employees.find(e => e.id === id);
-                                if (!emp) return null;
-                                return (
-                                    <div key={`active-teacher-${id}`} className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 shadow-md">
-                                        <span className="text-xs font-black select-none pointer-events-none">{emp.name.split(' ').slice(0, 2).join(' ')}</span>
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                handleRemoveFromPool(id, emp.name);
-                                            }}
-                                            className="w-5 h-5 rounded-full bg-white/20 hover:bg-red-500 hover:scale-110 flex items-center justify-center transition-all cursor-pointer shrink-0 active:scale-95"
-                                            title="إزالة من القائمة"
-                                            aria-label="إزالة"
-                                        >
-                                            <X size={12} />
-                                        </button>
-                                    </div>
-                                );
-                            }) : (
-                                <div className="w-full text-center py-4 text-slate-400">
-                                    <p className="text-xs font-bold">اختر معلمين من القوائم أدناه لتفعيلهم</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* External Substitutes */}
-                    <div className="space-y-3">
-                        <h5 className="text-xs font-black text-amber-600 uppercase tracking-widest flex items-center gap-2">
-                            <Globe size={14} /> بدلاء خارجيون
-                        </h5>
-                        <div className="space-y-2 max-h-[350px] overflow-y-auto custom-scrollbar pr-2">
-                            {availableExternals.length > 0 ? availableExternals.map(ext => {
-                                const isActive = activeExternalIds.includes(ext.id);
-                                return (
-                                    <button
-                                        key={ext.id}
-                                        onClick={() => handleToggleExternal(ext.id)}
-                                        className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
-                                            isActive
-                                                ? 'bg-amber-50 border-amber-400 shadow-md'
-                                                : 'bg-white border-slate-200 hover:border-amber-300'
-                                        }`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm ${
-                                                isActive ? 'bg-amber-500 text-white' : 'bg-amber-100 text-amber-600'
-                                            }`}>
-                                                {ext.name.charAt(0)}
-                                            </div>
-                                            <div className="text-right">
-                                                <p className={`text-sm font-black ${isActive ? 'text-amber-900' : 'text-slate-700'}`}>
-                                                    {ext.name}
-                                                </p>
-                                                <span className="text-[9px] font-bold bg-amber-500 text-white px-2 py-0.5 rounded-md mt-1 inline-block">
-                                                    {availableExternals.some(e => e.id === ext.id) ? 'خارجي' : 'داخلي محول'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        {isActive ? <Check size={20} className="text-amber-500" /> : <UserPlus size={20} className="text-slate-300" />}
-                                    </button>
-                                );
-                            }) : (
-                                <div className="text-center py-8 text-slate-400">
-                                    <Globe size={32} className="mx-auto mb-2 opacity-30" />
-                                    <p className="text-xs font-bold">لا يوجد بدلاء خارجيين</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Internal Available */}
-                    <div className="space-y-3">
-                        <h5 className="text-xs font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2">
-                            <Users size={14} /> داخلي متاح
-                        </h5>
-                        <div className="space-y-2 max-h-[350px] overflow-y-auto custom-scrollbar pr-2">
-                            {availableInternalCandidates.length > 0 ? availableInternalCandidates.map(cand => {
-                                const isActive = activeExternalIds.includes(cand.emp.id);
-                                const isFull = cand.status === 'FULL';
-                                return (
-                                    <button
-                                        key={cand.emp.id}
-                                        onClick={() => handleToggleExternal(cand.emp.id)}
-                                        className={`w-full flex flex-col items-start p-4 rounded-xl border-2 transition-all text-right ${
-                                            isActive
-                                                ? (isFull ? 'bg-emerald-50 border-emerald-400' : 'bg-indigo-50 border-indigo-400') + ' shadow-md'
-                                                : 'bg-white border-slate-200 hover:border-emerald-300'
-                                        }`}
-                                    >
-                                        <div className="flex items-center justify-between w-full">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm ${
-                                                    isActive
-                                                        ? (isFull ? 'bg-emerald-500' : 'bg-indigo-500') + ' text-white'
-                                                        : (isFull ? 'bg-emerald-100 text-emerald-600' : 'bg-indigo-100 text-indigo-600')
-                                                }`}>
-                                                    {cand.emp.name.charAt(0)}
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-black text-slate-800">
-                                                        {cand.emp.name.split(' ').slice(0, 2).join(' ')}
-                                                    </p>
-                                                    <p className="text-[9px] text-slate-500 mt-0.5">{cand.label}</p>
-                                                </div>
-                                            </div>
-                                            {isActive ? <Check size={18} className={isFull ? 'text-emerald-500' : 'text-indigo-500'} /> : <UserPlus size={18} className="text-slate-300" />}
-                                        </div>
-                                        {cand.details && (
-                                            <span className="text-[8px] text-slate-400 mt-2">{cand.details}</span>
-                                        )}
-                                    </button>
-                                );
-                            }) : (
-                                <div className="text-center py-8 text-slate-400">
-                                    <Users size={32} className="mx-auto mb-2 opacity-30" />
-                                    <p className="text-xs font-bold">لا يوجد متاحين حالياً</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* ملخص الإشغال */}
-                    <div className="space-y-3">
-                        <h5 className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">
-                            <Activity size={14} /> ملخص الإشغال
-                        </h5>
-                        <div className="bg-white p-4 rounded-xl border border-indigo-100 space-y-3">
-                            <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
-                                <span className="text-xs font-bold text-amber-900">بدلاء خارجيون</span>
-                                <span className="text-lg font-black text-amber-600">{availableExternals.length}</span>
-                            </div>
-                            <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
-                                <span className="text-xs font-bold text-emerald-900">داخليون متاحون</span>
-                                <span className="text-lg font-black text-emerald-600">{availableInternalCandidates.length}</span>
-                            </div>
-                            <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
-                                <span className="text-xs font-bold text-indigo-900">إجمالي المفعّلين</span>
-                                <span className="text-lg font-black text-indigo-600">{activeExternalIds.length}</span>
-                            </div>
-                            <div className="mt-4 p-3 bg-slate-50 rounded-lg">
-                                <p className="text-[10px] text-slate-500 text-center">
-                                    📊 اختر المعلمين من القوائم لتفعيلهم في بنك الاحتياط
-                                </p>
-                            </div>
-                            {busyCount > 0 && (
-                                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-xs font-bold text-slate-600">معلمون مشغولون</span>
-                                        <span className="text-sm font-black text-slate-500">{busyCount}</span>
-                                    </div>
-                                    <p className="text-[9px] text-slate-400 mt-1">غير متاحين لهذا اليوم</p>
-                                </div>
-                            )}
-                        </div>
+                {/* Info Box */}
+                <div className="bg-amber-100 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 flex items-start gap-2">
+                    <Info size={14} className="mt-0.5 shrink-0 text-amber-600" />
+                    <div>
+                        <p className="font-black mb-1">نوعان من المعلمين:</p>
+                        <ul className="text-[10px] space-y-1">
+                            <li>✅ <span className="font-bold">متاح:</span> لديه حصص اليوم ولديه فراغ</li>
+                            <li>📞 <span className="font-bold">مستدعى:</span> ليس لديه حصص اليوم، سيتم استدعاؤه</li>
+                        </ul>
                     </div>
                 </div>
             </div>
 
+            {/* Active Pool Display */}
+            {activeExternalIds.length > 0 && (
+                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <h5 className="text-sm font-black text-slate-800 mb-3 flex items-center gap-2">
+                        <Briefcase size={16} className="text-amber-600" />
+                        المعلمون في البنك ({activeExternalIds.length})
+                    </h5>
+                    <div className="flex flex-wrap gap-2">
+                        {activeExternalIds.map(id => {
+                            const emp = employees.find(e => e.id === id);
+                            if (!emp) return null;
+                            const isOnCall = !hasLessonsOnDate(id);
+
+                            return (
+                                <div
+                                    key={id}
+                                    onClick={() => onTogglePool(id)}
+                                    className="flex items-center gap-2 bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl cursor-pointer hover:bg-amber-100 transition-all group relative"
+                                >
+                                    <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-[10px] font-black">
+                                        {emp.name.charAt(0)}
+                                    </div>
+                                    <span className="text-xs font-bold text-slate-700">{emp.name}</span>
+
+                                    {/* On-call indicator */}
+                                    {isOnCall && (
+                                        <span className="text-[8px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-black flex items-center gap-1">
+                                            📞 مستدعى
+                                        </span>
+                                    )}
+
+                                    <Trash2 size={12} className="text-red-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {/* Search */}
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <div className="relative">
+                    <input
+                        type="text"
+                        placeholder="ابحث عن معلم..."
+                        className="w-full p-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-amber-300 transition-all"
+                        value={searchTerm}
+                        onChange={e => onSearchChange(e.target.value)}
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                        <UserPlus size={16} />
+                    </div>
+                </div>
+            </div>
+
+            {/* SECTION 1: Available Teachers (have lessons, have gaps) */}
+            {filteredAvailable.length > 0 && (
+                <div className="bg-white p-5 rounded-xl border border-emerald-200 shadow-sm">
+                    <div className="mb-3">
+                        <h5 className="text-sm font-black text-emerald-700 flex items-center gap-2">
+                            <CheckCircle2 size={16} />
+                            معلمون متاحون ({filteredAvailable.length})
+                        </h5>
+                        <p className="text-[9px] text-emerald-600 mt-0.5">
+                            لديهم حصص اليوم ولديهم فراغ - موجودون في المدرسة
+                        </p>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {filteredAvailable.map(emp => (
+                            <div
+                                key={emp.id}
+                                onClick={() => onTogglePool(emp.id)}
+                                className="p-3 bg-emerald-50 border-2 border-emerald-200 rounded-xl cursor-pointer hover:bg-emerald-100 hover:shadow-md transition-all flex items-center gap-2 group"
+                            >
+                                <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-black">
+                                    {emp.name.charAt(0)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-bold text-slate-700 truncate" title={emp.name}>
+                                        {emp.name}
+                                    </p>
+                                    <p className="text-[9px] text-emerald-600 font-medium">
+                                        ✅ لديه فراغ
+                                    </p>
+                                </div>
+                                <UserPlus size={14} className="text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* SECTION 2: On-Call Teachers (no lessons, must be called) */}
+            {filteredOnCall.length > 0 && (
+                <div className="bg-white p-5 rounded-xl border border-blue-200 shadow-sm">
+                    <div className="mb-3">
+                        <h5 className="text-sm font-black text-blue-700 flex items-center gap-2">
+                            <Phone size={16} />
+                            معلمون للاستدعاء ({filteredOnCall.length})
+                        </h5>
+                        <p className="text-[9px] text-blue-600 mt-0.5">
+                            ليس لديهم حصص اليوم - سيتم استدعاؤهم خصيصاً للمدرسة
+                        </p>
+                    </div>
+
+                    {/* Warning Box */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3 text-xs text-blue-800 flex items-start gap-2">
+                        <AlertCircle size={14} className="mt-0.5 shrink-0 text-blue-600" />
+                        <p>
+                            <span className="font-black">تنبيه:</span> هؤلاء المعلمون ليس لديهم حصص في هذا اليوم. إضافتهم للبنك تعني استدعاءهم خصيصاً للحضور إلى المدرسة.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {filteredOnCall.map(emp => (
+                            <div
+                                key={emp.id}
+                                onClick={() => {
+                                    // Show confirmation dialog
+                                    const confirmed = window.confirm(
+                                        `⚠️ ${emp.name} ليس لديه حصص في هذا اليوم.\n\n` +
+                                        `إضافته للبنك تعني استدعاءه خصيصاً للحضور إلى المدرسة.\n\n` +
+                                        `هل تريد المتابعة؟`
+                                    );
+                                    if (confirmed) {
+                                        onTogglePool(emp.id);
+                                    }
+                                }}
+                                className="p-3 bg-blue-50 border-2 border-blue-200 border-dashed rounded-xl cursor-pointer hover:bg-blue-100 hover:border-solid hover:shadow-md transition-all flex items-center gap-2 group"
+                            >
+                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-black">
+                                    {emp.name.charAt(0)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-bold text-slate-700 truncate" title={emp.name}>
+                                        {emp.name}
+                                    </p>
+                                    <p className="text-[9px] text-blue-600 font-medium flex items-center gap-1">
+                                        📞 استدعاء
+                                    </p>
+                                </div>
+                                <Phone size={14} className="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Empty State */}
+            {filteredAvailable.length === 0 && filteredOnCall.length === 0 && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-12 text-center">
+                    <Briefcase size={48} className="mx-auto mb-3 text-slate-300" />
+                    <p className="text-sm font-black text-slate-600 mb-1">
+                        {searchTerm ? 'لا توجد نتائج' : 'لا يوجد معلمون متاحون'}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                        {searchTerm ? 'جرب البحث بكلمات مختلفة' : 'جميع المعلمين في البنك بالفعل'}
+                    </p>
+                </div>
+            )}
+
             {/* Footer Navigation */}
-            <div className="flex justify-between pt-4">
+            <div className="flex justify-between items-center pt-4">
                 <button
                     onClick={onPrev}
-                    className="px-8 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50"
+                    className="px-8 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 flex items-center gap-2"
                 >
-                    ← السابق
+                    <ChevronRight size={16} />
+                    السابق
                 </button>
-                <button
-                    onClick={onNext}
-                    className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700"
-                >
-                    التالي ←
-                </button>
+
+                <div className="flex gap-3">
+                    <button
+                        onClick={onSave}
+                        className="px-6 py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl font-bold hover:bg-emerald-100 transition-all flex items-center gap-2"
+                    >
+                        <Save size={16} />
+                        حفظ
+                    </button>
+
+                    <button
+                        onClick={onNext}
+                        className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 flex items-center gap-2"
+                    >
+                        التالي
+                        <ChevronLeft size={16} />
+                    </button>
+                </div>
             </div>
         </div>
     );
