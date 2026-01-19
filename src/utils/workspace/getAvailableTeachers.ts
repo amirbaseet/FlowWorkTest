@@ -1,23 +1,6 @@
 import { normalizeArabic } from '@/utils';
-
-interface Employee {
-  id: number;
-  name: string;
-  addons?: {
-    educator?: boolean;
-    educatorClassId?: string;
-  };
-}
-
-interface Lesson {
-  teacherId: number;
-  classId: string;
-  className?: string;
-  period: number;
-  day: string;
-  subject: string;
-  type?: string;
-}
+import { getClassSwapOpportunity } from './getClassSwapOpportunity';
+import type { Employee, Lesson } from '@/types';
 
 export interface AvailableTeacherInfo {
   teacherId: number;
@@ -40,6 +23,13 @@ export interface AvailableTeacherInfo {
   hasLessonsToday?: boolean; // NEW: Does teacher have any lessons this day?
   isOnCall?: boolean; // NEW: Is teacher explicitly called to school?
   isUnavailable?: boolean; // NEW: Is teacher busy or absent (in pool but can't be selected)
+  // NEW: Class-based swap opportunity
+  classSwapOpportunity?: {
+    canSwap: boolean;
+    lastPeriod: number;
+    swapType: 'gap' | 'individual' | 'stay';
+    earlyDismissalPeriod: number;
+  };
 }
 
 interface GetAvailableTeachersParams {
@@ -53,7 +43,7 @@ interface GetAvailableTeachersParams {
   scheduleConfig?: {
     periodsPerDay: number;
   };
-  reservePoolIds?: number[]; // NEW: Explicitly added to reserve pool
+  reservePoolIds?: number[];
 }
 
 /**
@@ -134,7 +124,7 @@ export function getAvailableTeachers(
     if (currentLesson) {
       lessonInfo = {
         classId: currentLesson.classId,
-        className: currentLesson.className || currentLesson.classId,
+        className: currentLesson.classId, // Use classId as className
         subject: currentLesson.subject,
         period: currentLesson.period,
         type: currentLesson.type || 'actual'
@@ -311,6 +301,34 @@ export function getAvailableTeachers(
 
     // If has actual lesson but doesn't match any category - skip
     // (busy with real teaching)
+  }
+
+  // NEW: Check if target class has swappable last period
+  const classSwap = getClassSwapOpportunity(
+    classId,
+    period,
+    day,
+    lessons,
+    scheduleConfig?.periodsPerDay || 8
+  );
+
+  // Add class swap info to ALL candidates (if available)
+  if (classSwap.canSwap) {
+    const addClassSwapInfo = (candidate: AvailableTeacherInfo) => {
+      candidate.classSwapOpportunity = {
+        canSwap: true,
+        lastPeriod: classSwap.lastPeriod!,
+        swapType: classSwap.swapType!,
+        earlyDismissalPeriod: classSwap.earlyDismissalPeriod!
+      };
+    };
+
+    educatorCandidates.forEach(addClassSwapInfo);
+    sharedCandidates.forEach(addClassSwapInfo);
+    individualCandidates.forEach(addClassSwapInfo);
+    stayCandidates.forEach(addClassSwapInfo);
+    availableCandidates.forEach(addClassSwapInfo);
+    onCallCandidates.forEach(addClassSwapInfo);
   }
 
   // Sort each category by priority

@@ -391,12 +391,15 @@ const Workspace: React.FC<WorkspaceProps> = ({
         availableTeachers={availableTeachers}
         activeExternalIds={localPoolIds} // ✅ NEW: Pass reserve pool IDs
         employees={employees} // ✅ NEW: Pass employees for lookup
-        onSelectTeacher={(teacherId, swapWithLast) => {
-          if (swapWithLast) {
-            // Handle swap logic - teacher will be assigned and can leave early
+        onSelectTeacher={(teacherId, swapWithLast, swapType, classSwapInfo) => {
+          if (swapType === 'substitute-based' && swapWithLast) {
+            // Handle substitute-based swap - teacher swaps their own lessons
             manualAssignments.handleSwapWithLast(teacherId, scheduleConfig);
+          } else if (swapType === 'class-based' && classSwapInfo) {
+            // Handle class-based swap - swap absence with class's last period
+            manualAssignments.handleClassBasedSwap(teacherId, classSwapInfo);
           } else {
-            // Regular assignment
+            // Regular assignment (no swap)
             manualAssignments.handleSelectTeacher(teacherId);
           }
         }}

@@ -20,7 +20,7 @@ interface AvailableTeachersPopupProps {
     availableCandidates: AvailableTeacherInfo[];
     onCallCandidates: AvailableTeacherInfo[]; // ✅ NEW
   };
-  onSelectTeacher: (teacherId: number, swapWithLast?: boolean) => void;
+  onSelectTeacher: (teacherId: number, swapWithLast?: boolean, swapType?: 'substitute-based' | 'class-based', classSwapInfo?: any) => void;
   activeExternalIds?: number[]; // ✅ NEW: Reserve pool IDs
   employees: Employee[]; // ✅ NEW: To lookup missing pool teachers
 }
@@ -307,19 +307,57 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
         {teacher.canSwapWithLast && teacher.swapInfo && (
           <div className="bg-indigo-50 px-3 py-2 border-t border-indigo-200">
             <button
-              onClick={() => onSelectTeacher(teacher.teacherId, true)}
+              onClick={() => onSelectTeacher(teacher.teacherId, true, 'substitute-based')}
               className="w-full flex items-center gap-2 p-2 bg-white border-2 border-indigo-300 rounded-lg hover:bg-indigo-100 transition-colors"
             >
-              <RefreshCw size={14} className="text-indigo-600" />
+              <ArrowRightLeft size={14} className="text-indigo-600" />
               <div className="flex-1 text-right">
                 <div className="text-xs font-bold text-indigo-900">
-                  🔄 تبديل مع الحصة الأخيرة
+                  🔄 تبديل حصصك الشخصية
                 </div>
                 <div className="text-[10px] text-indigo-700">
-                  يمكن للمعلم المغادرة مبكراً بعد حصة {teacher.swapInfo.currentPeriod}
+                  حصة {teacher.swapInfo.currentPeriod} ↔ حصة {teacher.swapInfo.lastPeriod}
+                </div>
+                <div className="text-[10px] font-bold text-indigo-800 mt-0.5">
+                  🏃 مغادرة بعد حصة {teacher.swapInfo.lastPeriod - 1}
                 </div>
               </div>
             </button>
+          </div>
+        )}
+
+        {/* NEW: Class-based swap option */}
+        {teacher.classSwapOpportunity?.canSwap && (
+          <div className="bg-emerald-50 px-3 py-2 border-t border-emerald-200">
+            <button
+              onClick={() => onSelectTeacher(teacher.teacherId, false, 'class-based', teacher.classSwapOpportunity)}
+              className="w-full flex items-center gap-2 p-2 bg-white border-2 border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors"
+            >
+              <RefreshCw size={14} className="text-emerald-600" />
+              <div className="flex-1 text-right">
+                <div className="text-xs font-bold text-emerald-900">
+                  🔄 تبديل مع آخر حصة للصف
+                </div>
+                <div className="text-[10px] text-emerald-700">
+                  تغطية حصة {teacher.classSwapOpportunity.lastPeriod} بدلاً من {lesson.period}
+                </div>
+                <div className="text-[9px] text-emerald-600 mt-0.5">
+                  {teacher.classSwapOpportunity.swapType === 'gap' && '📭 آخر حصة: فراغ'}
+                  {teacher.classSwapOpportunity.swapType === 'individual' && '👤 آخر حصة: فردي'}
+                  {teacher.classSwapOpportunity.swapType === 'stay' && '☕ آخر حصة: مكوث'}
+                </div>
+                <div className="text-[10px] font-bold text-emerald-800 mt-0.5">
+                  🏃 مغادرة بعد حصة {teacher.classSwapOpportunity.earlyDismissalPeriod}
+                </div>
+              </div>
+            </button>
+          </div>
+        )}
+
+        {/* Show divider if both swaps available */}
+        {teacher.canSwapWithLast && teacher.classSwapOpportunity?.canSwap && (
+          <div className="bg-gray-50 px-3 py-1 text-center text-[10px] font-bold text-gray-500 border-t border-gray-200">
+            أو
           </div>
         )}
       </div>
@@ -469,11 +507,31 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
                       {/* Swap Option */}
                       {!teacher.isUnavailable && teacher.canSwapWithLast && teacher.swapInfo && (
                         <button
-                          onClick={() => onSelectTeacher(teacher.teacherId, true)}
+                          onClick={() => onSelectTeacher(teacher.teacherId, true, 'substitute-based')}
                           className="mt-2 w-full px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-[10px] font-black text-purple-700 hover:bg-purple-100 transition-all flex items-center justify-center gap-1"
                         >
                           <ArrowRightLeft size={12} />
-                          تبديل مع الحصة الأخيرة (مغادرة باكراً)
+                          تبديل حصصك الشخصية - مغادرة باكراً بعد حصة {teacher.swapInfo.lastPeriod - 1}
+                        </button>
+                      )}
+
+                      {/* NEW: Class-based swap option */}
+                      {!teacher.isUnavailable && teacher.classSwapOpportunity?.canSwap && (
+                        <button
+                          onClick={() => onSelectTeacher(teacher.teacherId, false, 'class-based', teacher.classSwapOpportunity)}
+                          className="mt-2 w-full px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-black text-emerald-700 hover:bg-emerald-100 transition-all"
+                        >
+                          <div className="flex items-center justify-center gap-1 mb-1">
+                            <RefreshCw size={12} />
+                            تبديل مع آخر حصة للصف
+                          </div>
+                          <div className="text-[9px]">
+                            {teacher.classSwapOpportunity.swapType === 'gap' && '📭 فراغ'}
+                            {teacher.classSwapOpportunity.swapType === 'individual' && '👤 فردي'}
+                            {teacher.classSwapOpportunity.swapType === 'stay' && '☕ مكوث'}
+                            {' - '}
+                            مغادرة بعد حصة {teacher.classSwapOpportunity.earlyDismissalPeriod}
+                          </div>
                         </button>
                       )}
                     </div>

@@ -25,8 +25,9 @@ export interface UseManualAssignmentsReturn {
     reason: string;
   }>) => void;
   handleLessonClick: (lesson: any, className: string) => void;
-  handleSelectTeacher: (teacherId: number) => void;
+  handleSelectTeacher: (teacherId: number, swapWithLast?: boolean, swapType?: 'substitute-based' | 'class-based', classSwapInfo?: any) => void;
   handleSwapWithLast: (teacherId: number, scheduleConfig?: { periodsPerDay: number }) => void;
+  handleClassBasedSwap: (teacherId: number, classSwapInfo: any) => void;
   setActiveSlot: (slot: { classId: string; period: number } | null) => void;
   closePopup: () => void;
 }
@@ -219,11 +220,26 @@ export const useManualAssignments = ({
   }, [dayName]);
 
   // Handler: Select teacher from popup
-  const handleSelectTeacher = useCallback((teacherId: number) => {
+  const handleSelectTeacher = useCallback((teacherId: number, swapWithLast?: boolean, swapType?: 'substitute-based' | 'class-based', classSwapInfo?: any) => {
     if (!selectedLesson) return;
 
     const teacher = employees.find(e => e.id === teacherId);
+
+    // Check if we need to perform a swap
+    if (swapWithLast && swapType === 'substitute-based') {
+      // Use existing substitute-based swap handler
+      const scheduleConfig = { periodsPerDay: 8 }; // TODO: Get from context
+      handleSwapWithLast(teacherId, scheduleConfig);
+      return;
+    }
+
+    if (swapType === 'class-based' && classSwapInfo) {
+      // Use new class-based swap handler
+      handleClassBasedSwap(teacherId, classSwapInfo);
+      return;
+    }
     
+    // Normal assignment (no swap)
     handleAssign(
       selectedLesson.classId,
       selectedLesson.period,
@@ -272,7 +288,7 @@ export const useManualAssignments = ({
       selectedLesson.classId,
       selectedLesson.period,
       teacherId,
-      `بديل مع تبديل - ${teacher?.name || 'معلم'} (مغادرة مبكرة)`
+      `بديل مع تبديل شخصي - ${teacher?.name || 'معلم'} (مغادرة مبكرة)`
     );
 
     setIsPopupOpen(false);
@@ -284,6 +300,39 @@ export const useManualAssignments = ({
       'success'
     );
   }, [selectedLesson, employees, lessons, dayName, handleAssign, addToast]);
+
+  // NEW: Handler: Class-based swap (swap absence with class's last period)
+  const handleClassBasedSwap = useCallback((teacherId: number, classSwapInfo: {
+    lastPeriod: number;
+    swapType: 'gap' | 'individual' | 'stay';
+    earlyDismissalPeriod: number;
+  }) => {
+    if (!selectedLesson) return;
+
+    const teacher = employees.find(e => e.id === teacherId);
+    const swapTypeLabel = {
+      gap: 'فراغ',
+      individual: 'فردي',
+      stay: 'مكوث'
+    }[classSwapInfo.swapType];
+
+    // Assign teacher to LAST period instead of target period
+    handleAssign(
+      selectedLesson.classId,
+      classSwapInfo.lastPeriod, // ← Assign to last period!
+      teacherId,
+      `بديل مع تبديل صفي - ${teacher?.name || 'معلم'} (تغطية حصة ${classSwapInfo.lastPeriod} بدلاً من ${selectedLesson.period})`
+    );
+
+    setIsPopupOpen(false);
+    setSelectedLesson(null);
+    
+    addToast(
+      `✅ تبديل ذكي! ${teacher?.name || 'معلم'} سيغطي الحصة ${classSwapInfo.lastPeriod} (${swapTypeLabel}) بدلاً من ${selectedLesson.period}\n` +
+      `🏃 يمكنه المغادرة بعد حصة ${classSwapInfo.earlyDismissalPeriod}`,
+      'success'
+    );
+  }, [selectedLesson, employees, handleAssign, addToast]);
 
   // Handler: Close popup
   const closePopup = useCallback(() => {
@@ -302,6 +351,7 @@ export const useManualAssignments = ({
     handleLessonClick,
     handleSelectTeacher,
     handleSwapWithLast,
+    handleClassBasedSwap,
     setActiveSlot,
     closePopup
   };
