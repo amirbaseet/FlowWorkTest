@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, GraduationCap, Users, User, Coffee, CheckCircle2, RefreshCw, PhoneCall, Briefcase, ArrowRightLeft } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, GraduationCap, Users, User, Coffee, CheckCircle2, RefreshCw, PhoneCall, Briefcase, ArrowRightLeft, Clock, School } from 'lucide-react';
 import type { AvailableTeacherInfo } from '@/utils/workspace/getAvailableTeachers';
 import type { Employee } from '@/types';
 
@@ -34,6 +34,14 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
   activeExternalIds = [], // ✅ NEW: Reserve pool IDs with default
   employees
 }) => {
+  // NEW: State for swap confirmation modal
+  const [showSwapConfirmation, setShowSwapConfirmation] = useState(false);
+  const [swapConfirmationData, setSwapConfirmationData] = useState<{
+    teacher: AvailableTeacherInfo;
+    swapType: 'substitute-based' | 'class-based';
+    swapInfo: any;
+  } | null>(null);
+
   if (!isOpen) return null;
 
   const {
@@ -330,7 +338,14 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
         {teacher.classSwapOpportunity?.canSwap && (
           <div className="bg-emerald-50 px-3 py-2 border-t border-emerald-200">
             <button
-              onClick={() => onSelectTeacher(teacher.teacherId, false, 'class-based', teacher.classSwapOpportunity)}
+              onClick={() => {
+                setSwapConfirmationData({
+                  teacher,
+                  swapType: 'class-based',
+                  swapInfo: teacher.classSwapOpportunity
+                });
+                setShowSwapConfirmation(true);
+              }}
               className="w-full flex items-center gap-2 p-2 bg-white border-2 border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors"
             >
               <RefreshCw size={14} className="text-emerald-600" />
@@ -347,7 +362,7 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
                   {teacher.classSwapOpportunity.swapType === 'stay' && '☕ آخر حصة: مكوث'}
                 </div>
                 <div className="text-[10px] font-bold text-emerald-800 mt-0.5">
-                  🏃 مغادرة بعد حصة {teacher.classSwapOpportunity.earlyDismissalPeriod}
+                  🎓 الصف ينتهي بعد حصة {teacher.classSwapOpportunity.earlyDismissalPeriod}
                 </div>
               </div>
             </button>
@@ -518,7 +533,14 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
                       {/* NEW: Class-based swap option */}
                       {!teacher.isUnavailable && teacher.classSwapOpportunity?.canSwap && (
                         <button
-                          onClick={() => onSelectTeacher(teacher.teacherId, false, 'class-based', teacher.classSwapOpportunity)}
+                          onClick={() => {
+                            setSwapConfirmationData({
+                              teacher,
+                              swapType: 'class-based',
+                              swapInfo: teacher.classSwapOpportunity
+                            });
+                            setShowSwapConfirmation(true);
+                          }}
                           className="mt-2 w-full px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-black text-emerald-700 hover:bg-emerald-100 transition-all"
                         >
                           <div className="flex items-center justify-center gap-1 mb-1">
@@ -530,7 +552,7 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
                             {teacher.classSwapOpportunity.swapType === 'individual' && '👤 فردي'}
                             {teacher.classSwapOpportunity.swapType === 'stay' && '☕ مكوث'}
                             {' - '}
-                            مغادرة بعد حصة {teacher.classSwapOpportunity.earlyDismissalPeriod}
+                            🎓 الصف ينتهي بعد حصة {teacher.classSwapOpportunity.earlyDismissalPeriod}
                           </div>
                         </button>
                       )}
@@ -641,6 +663,115 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
           )}
         </div>
       </div>
+
+      {/* NEW: Swap Confirmation Modal */}
+      {showSwapConfirmation && swapConfirmationData && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-500 to-teal-500 p-6 text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  <RefreshCw size={24} className="text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-black">🔄 تبديل ذكي - إنهاء مبكر للصف</h3>
+                  <p className="text-xs text-white/80 mt-1">
+                    {swapConfirmationData.teacher.teacherName} سيغطي الحصة {lesson.period}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              {/* Class Info */}
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <School size={20} className="text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs text-blue-600 font-bold">🏫 الصف:</div>
+                    <div className="text-sm font-black text-blue-900">{lesson.className}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Class End Time (CORRECTED) */}
+              <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <GraduationCap size={20} className="text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs text-green-600 font-bold">🎓 الصف ينتهي بعد:</div>
+                    <div className="text-sm font-black text-green-900">
+                      الحصة {swapConfirmationData.swapInfo.earlyDismissalPeriod || (swapConfirmationData.swapInfo.lastPeriod - 1)}
+                    </div>
+                    <div className="text-[10px] text-green-700 mt-0.5">
+                      🎉 الطلاب يغادرون مبكراً
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Swap Details (CORRECTED) */}
+              <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <RefreshCw size={20} className="text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs text-amber-600 font-bold">🔄 التبديل:</div>
+                    <div className="text-sm font-black text-amber-900">
+                      تغطية حصة {lesson.period} + إلغاء حصة {swapConfirmationData.swapInfo.lastPeriod}
+                    </div>
+                    <div className="text-[10px] text-amber-700 mt-1">
+                      {swapConfirmationData.swapInfo.swapType === 'gap' && '📭 الحصة الملغاة: فراغ'}
+                      {swapConfirmationData.swapInfo.swapType === 'individual' && '👤 الحصة الملغاة: فردي'}
+                      {swapConfirmationData.swapInfo.swapType === 'stay' && '☕ الحصة الملغاة: مكوث'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer - Action Buttons */}
+            <div className="p-6 bg-gray-50 flex gap-3">
+              {/* Cancel Button */}
+              <button
+                onClick={() => {
+                  setShowSwapConfirmation(false);
+                  setSwapConfirmationData(null);
+                }}
+                className="flex-1 px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-700 font-black text-sm hover:bg-gray-100 transition-all flex items-center justify-center gap-2"
+              >
+                <X size={18} />
+                <span>❌ لا، إلغاء</span>
+              </button>
+
+              {/* Confirm Button */}
+              <button
+                onClick={() => {
+                  onSelectTeacher(
+                    swapConfirmationData.teacher.teacherId,
+                    swapConfirmationData.swapType === 'substitute-based',
+                    swapConfirmationData.swapType,
+                    swapConfirmationData.swapInfo
+                  );
+                  setShowSwapConfirmation(false);
+                  setSwapConfirmationData(null);
+                }}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl text-white font-black text-sm hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2 shadow-lg"
+              >
+                <CheckCircle2 size={18} />
+                <span>✅ نعم، موافق</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -309,12 +309,20 @@ export const useManualAssignments = ({
   }) => {
     if (!selectedLesson) return;
 
+    console.log('🔄 Class-based swap initiated:', {
+      teacherId,
+      selectedLesson,
+      classSwapInfo
+    });
+
     const teacher = employees.find(e => e.id === teacherId);
     const swapTypeLabel = {
       gap: 'فراغ',
       individual: 'فردي',
       stay: 'مكوث'
     }[classSwapInfo.swapType];
+
+    console.log('📝 Creating assignment at period:', classSwapInfo.lastPeriod);
 
     // Assign teacher to LAST period instead of target period
     handleAssign(
@@ -324,12 +332,14 @@ export const useManualAssignments = ({
       `بديل مع تبديل صفي - ${teacher?.name || 'معلم'} (تغطية حصة ${classSwapInfo.lastPeriod} بدلاً من ${selectedLesson.period})`
     );
 
+    console.log('✅ Assignment created successfully');
+
     setIsPopupOpen(false);
     setSelectedLesson(null);
     
     addToast(
       `✅ تبديل ذكي! ${teacher?.name || 'معلم'} سيغطي الحصة ${classSwapInfo.lastPeriod} (${swapTypeLabel}) بدلاً من ${selectedLesson.period}\n` +
-      `🏃 يمكنه المغادرة بعد حصة ${classSwapInfo.earlyDismissalPeriod}`,
+      `🎓 الصف ينتهي بعد حصة ${classSwapInfo.earlyDismissalPeriod}`,
       'success'
     );
   }, [selectedLesson, employees, handleAssign, addToast]);

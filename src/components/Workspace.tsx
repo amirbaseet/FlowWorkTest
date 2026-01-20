@@ -1,7 +1,7 @@
 // src/components/Workspace.tsx
 // Refactored from 2073 lines to ~260 lines
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
 // Atomic Hooks
 import { useLessons } from '@/hooks/useLessons';
@@ -49,7 +49,7 @@ import {
 } from '@/types';
 
 // Utils
-import { toLocalISOString } from '@/utils';
+import { toLocalISOString, normalizeArabic } from '@/utils';
 import { getAvailableTeachers } from '@/utils/workspace/getAvailableTeachers';
 
 interface WorkspaceProps {
@@ -236,6 +236,68 @@ const Workspace: React.FC<WorkspaceProps> = ({
       )
     : { poolCandidates: [], educatorCandidates: [], supportCandidates: [] };
 
+  // Detect classes with early dismissal due to smart swaps
+  const earlyDismissalClasses = useMemo(() => {
+    const dateStr = toLocalISOString(workspaceView.viewDate);
+    const normDay = normalizeArabic(workspaceView.selectedDay);
+    const result: Array<{
+      classId: string;
+      className: string;
+      classEndPeriod: number;
+      cancelledPeriod: number;
+      teacherName: string;
+    }> = [];
+
+    console.log('🔍 Checking for early dismissals...', {
+      totalAssignments: Object.keys(manualAssignments.assignments).length,
+      assignments: manualAssignments.assignments
+    });
+
+    Object.entries(manualAssignments.assignments).forEach(
+      ([key, assignList]: [string, Array<{ teacherId: number; reason: string }>]) => {
+        assignList.forEach(assign => {
+          console.log('📝 Assignment reason:', assign.reason);
+          if (assign.reason.includes('تبديل صفي')) {
+            console.log('✅ Found class swap!');
+            const match = assign.reason.match(/تغطية حصة (\d+) بدلاً من (\d+)/);
+            if (match) {
+              const swappedPeriod = parseInt(match[1]);
+              const originalPeriod = parseInt(match[2]);
+              // FIX: Extract classId properly - everything except the last part (period)
+              const parts = key.split('-');
+              const periodPart = parts[parts.length - 1]; // Last part is the period
+              const classId = parts.slice(0, -1).join('-'); // Everything else is classId
+
+              // Only add if this key matches the LAST PERIOD (where assignment was made)
+              if (parseInt(periodPart) === swappedPeriod) {
+                const cls = classesData.find(c => c.id === classId);
+                const teacher = employees.find(e => e.id === assign.teacherId);
+                if (cls && teacher) {
+                  console.log('🎓 Adding early dismissal:', {
+                    className: cls.name,
+                    classEndPeriod: swappedPeriod - 1,
+                    cancelledPeriod: swappedPeriod,
+                    originalPeriod: originalPeriod
+                  });
+                  result.push({
+                    classId,
+                    className: cls.name,
+                    classEndPeriod: swappedPeriod - 1,
+                    cancelledPeriod: swappedPeriod,
+                    teacherName: teacher.name
+                  });
+                }
+              }
+            }
+          }
+        });
+      }
+    );
+
+    console.log('📊 Early dismissal classes:', result);
+    return result;
+  }, [manualAssignments.assignments, classesData, employees, workspaceView.viewDate, workspaceView.selectedDay]);
+
   // ==========================================================================
   // HANDLERS
   // ==========================================================================
@@ -252,6 +314,34 @@ const Workspace: React.FC<WorkspaceProps> = ({
     modals.openAbsenceForm(stage);
     setShowAbsenceFormModal(true);
   };
+
+  const handleUndoClassSwap = useCallback((classId: string, cancelledPeriod: number) => {
+    console.log('🔄 Undo class swap:', { classId, cancelledPeriod });
+    
+    // The assignment is stored at the CANCELLED PERIOD (last period), not original period
+    const key = `${classId}-${cancelledPeriod}`;
+    const assignmentsForKey = manualAssignments.assignments[key];
+    
+    console.log('🔍 Looking for assignment at key:', key, assignmentsForKey);
+    
+    if (!assignmentsForKey) {
+      addToast('❌ لم يتم العثور على التبديل', 'error');
+      return;
+    }
+
+    // Find the class-based swap assignment
+    const swapAssignment = assignmentsForKey.find(a => a.reason.includes('تبديل صفي'));
+    
+    if (!swapAssignment) {
+      addToast('❌ لم يتم العثور على التبديل', 'error');
+      return;
+    }
+
+    console.log('✅ Found swap assignment, removing:', swapAssignment);
+    // Remove the assignment using handleRemove
+    manualAssignments.handleRemove(classId, cancelledPeriod, swapAssignment.teacherId);
+    addToast('✅ تم التراجع عن التبديل بنجاح', 'success');
+  }, [manualAssignments, addToast]);
 
   // ==========================================================================
   // RENDER
@@ -319,6 +409,38 @@ const Workspace: React.FC<WorkspaceProps> = ({
               />
             )}
 
+            {/* NEW: Early Dismissal Summary Box */}
+            {earlyDismissalClasses.length > 0 && (
+              <div className="mx-2 mb-2 p-3 bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-400 rounded-xl shadow-md">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-[11px] font-black text-emerald-800 flex items-center gap-1">
+                    <span className="text-base">🎓</span>
+                    <span>صفوف تنتهي مبكراً اليوم</span>
+                    <span className="bg-emerald-500 text-white px-1.5 py-0.5 rounded-full text-[9px] font-black ml-1">
+                      {earlyDismissalClasses.length}
+                    </span>
+                  </h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {earlyDismissalClasses.map((item, idx) => (
+                    <div
+                      key={`${item.classId}-${idx}`}
+                      className="flex items-center gap-2 px-2 py-1.5 bg-white border border-emerald-200 rounded-lg shadow-sm"
+                    >
+                      <span className="text-[10px] font-black text-emerald-900">{item.className}</span>
+                      <span className="text-emerald-500 text-[9px]">→</span>
+                      <span className="text-[9px] font-bold text-emerald-700">
+                        ينتهي بعد حصة {item.classEndPeriod}
+                      </span>
+                      <span className="text-[8px] text-gray-500 italic">
+                        (الحصة {item.cancelledPeriod} ملغاة)
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <ModeSelectionPanel
               selectedMode={workspaceMode.selectedMode}
               confirmedModes={workspaceMode.confirmedModes}
@@ -356,6 +478,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
                   onLessonClick={manualAssignments.handleLessonClick}
                   isSlotVisible={workspaceFilters.isSlotVisible}
                   hasActiveFilters={workspaceFilters.hasActiveFilters}
+                  onUndoClassSwap={handleUndoClassSwap}
                 />
               </div>
 

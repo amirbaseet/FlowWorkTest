@@ -312,15 +312,20 @@ export function getAvailableTeachers(
     scheduleConfig?.periodsPerDay || 8
   );
 
-  // Add class swap info to ALL candidates (if available)
-  if (classSwap.canSwap) {
+  // Add class swap info ONLY to the teacher who teaches the last period
+  if (classSwap.canSwap && classSwap.lastPeriodLesson) {
+    const lastPeriodTeacherId = classSwap.lastPeriodLesson.teacherId;
+    
     const addClassSwapInfo = (candidate: AvailableTeacherInfo) => {
-      candidate.classSwapOpportunity = {
-        canSwap: true,
-        lastPeriod: classSwap.lastPeriod!,
-        swapType: classSwap.swapType!,
-        earlyDismissalPeriod: classSwap.earlyDismissalPeriod!
-      };
+      // Only add swap info if this candidate is the teacher of the last period
+      if (candidate.teacherId === lastPeriodTeacherId) {
+        candidate.classSwapOpportunity = {
+          canSwap: true,
+          lastPeriod: classSwap.lastPeriod!,
+          swapType: classSwap.swapType!,
+          earlyDismissalPeriod: classSwap.earlyDismissalPeriod!
+        };
+      }
     };
 
     educatorCandidates.forEach(addClassSwapInfo);
