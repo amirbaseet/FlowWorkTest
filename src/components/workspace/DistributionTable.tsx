@@ -144,59 +144,30 @@ const DistributionTable: React.FC<DistributionTableProps> = ({
         <table className="w-full text-[9px] border-collapse">
           <thead className="sticky top-0 bg-indigo-100 z-20 shadow-sm">
             <tr>
-              {/* Class Label (sticky left corner) */}
-              <th className="sticky right-0 z-30 bg-indigo-200 border border-indigo-300 p-2 text-[10px] font-black text-indigo-900 w-32">
-                الصف
+              {/* Period Label (sticky left corner) */}
+              <th className="sticky right-0 z-30 bg-indigo-200 border border-indigo-300 p-2 text-[10px] font-black text-indigo-900 w-16">
+                الحصة
               </th>
 
-          {/* Period Headers */}
-          {periods.map(period => {
-            const isPeriodSelected = selectedPeriods.includes(period);
+          {/* Class Headers */}
+          {classes.map(cls => {
+            const isSelected = selectedClasses.includes(cls.id);
+            const classSwap = classSwaps[cls.id];
             return (
               <th
-                key={period}
+                key={cls.id}
                 className="border border-indigo-300 p-1 min-w-[100px] relative"
               >
-                <div className="flex flex-col gap-1 items-center">
-                  <div className="text-[10px] font-bold text-indigo-900">
-                    <span>حصة {period}</span>
-                  </div>
-                  {selectedMode && (
-                    <button
-                      onClick={() => onTogglePeriod(period)}
-                      className={`w-full px-2 py-0.5 rounded text-[7px] font-bold transition-all ${
-                        isPeriodSelected
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-white text-gray-600 hover:bg-indigo-50'
-                      }`}
-                    >
-                      {isPeriodSelected ? '✓ محدد' : 'اختيار'}
-                    </button>
-                  )}
-                </div>
-              </th>
-            );
-          })}
-        </tr>
-      </thead>
-      <tbody>
-        {classes.map(cls => {
-          const isSelected = selectedClasses.includes(cls.id);
-          const classSwap = classSwaps[cls.id];
-          return (
-            <tr key={cls.id} className="border-b border-indigo-200">
-              {/* Class Name (sticky left) */}
-              <td className="sticky right-0 z-10 bg-indigo-100 border border-indigo-300 p-2 text-center font-black text-indigo-900">
-                <div className="flex flex-col items-center gap-1">
-                  {/* Early dismissal banner */}
-                  {classSwap && (
-                    <div className="w-full mb-1">
-                      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-2 py-1 rounded text-[7px] font-black flex items-center justify-center gap-1 shadow-lg whitespace-nowrap">
-                        <GraduationCap size={10} />
-                        <span>🎓 ينتهي بعد حصة {classSwap.classEndPeriod}</span>
-                      </div>
+                {/* Early dismissal banner */}
+                {classSwap && (
+                  <div className="w-full mb-1">
+                    <div className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-2 py-1 rounded text-[7px] font-black flex items-center justify-center gap-1 shadow-lg whitespace-nowrap">
+                      <GraduationCap size={10} />
+                      <span>🎓 ينتهي بعد حصة {classSwap.classEndPeriod}</span>
                     </div>
-                  )}
+                  </div>
+                )}
+                <div className="flex flex-col gap-1 items-center">
                   <div className="text-[10px] font-bold text-indigo-900 flex flex-wrap items-center justify-center gap-1">
                     <span className="whitespace-nowrap">{cls.name}</span>
                     {classSwap && (
@@ -222,10 +193,37 @@ const DistributionTable: React.FC<DistributionTableProps> = ({
                     </button>
                   )}
                 </div>
+              </th>
+            );
+          })}
+        </tr>
+      </thead>
+      <tbody>
+        {periods.map(period => {
+          const isPeriodSelected = selectedPeriods.includes(period);
+          return (
+            <tr key={period} className="border-b border-indigo-200">
+              {/* Period Number (sticky left) */}
+              <td className="sticky right-0 z-10 bg-indigo-100 border border-indigo-300 p-2 text-center font-black text-indigo-900">
+                <div className="flex flex-col items-center gap-1">
+                  <div className="text-base">{period}</div>
+                  {selectedMode && (
+                    <button
+                      onClick={() => onTogglePeriod(period)}
+                      className={`w-full px-2 py-0.5 rounded text-[7px] font-bold transition-all ${
+                        isPeriodSelected
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white text-gray-600 hover:bg-indigo-50'
+                      }`}
+                    >
+                      {isPeriodSelected ? '✓' : '○'}
+                    </button>
+                  )}
+                </div>
               </td>
 
               {/* Lesson Cells */}
-              {periods.map(period => {
+              {classes.map(cls => {
                 const normDay = normalizeArabic(dayName);
                 const lesson = lessons.find(
                   l =>
