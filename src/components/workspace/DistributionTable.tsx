@@ -139,40 +139,69 @@ const DistributionTable: React.FC<DistributionTableProps> = ({
   };
 
   return (
-    <table className="w-full text-[9px] border-collapse">
-      <thead className="sticky top-0 bg-indigo-100 z-20 shadow-sm">
-        <tr>
-          {/* Period Label (sticky left corner) */}
-          <th className="sticky right-0 z-30 bg-indigo-200 border border-indigo-300 p-2 text-[10px] font-black text-indigo-900 w-16">
-            الحصة
-          </th>
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="overflow-auto flex-1">
+        <table className="w-full text-[9px] border-collapse">
+          <thead className="sticky top-0 bg-indigo-100 z-20 shadow-sm">
+            <tr>
+              {/* Class Label (sticky left corner) */}
+              <th className="sticky right-0 z-30 bg-indigo-200 border border-indigo-300 p-2 text-[10px] font-black text-indigo-900 w-32">
+                الصف
+              </th>
 
-          {/* Class Headers */}
-          {classes.map(cls => {
-            const isSelected = selectedClasses.includes(cls.id);
-            const classSwap = classSwaps[cls.id]; // Check if class has active swap
+          {/* Period Headers */}
+          {periods.map(period => {
+            const isPeriodSelected = selectedPeriods.includes(period);
             return (
               <th
-                key={cls.id}
+                key={period}
                 className="border border-indigo-300 p-1 min-w-[100px] relative"
               >
-                {/* CORRECTED: Early CLASS Dismissal Banner (Students leave, not teacher) */}
-                {classSwap && (
-                  <div className="absolute top-0 left-0 right-0 z-20 transform -translate-y-full">
-                    <div className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-2 py-1 rounded-t-lg text-[7px] font-black flex items-center justify-center gap-1 shadow-lg">
-                      <GraduationCap size={10} />
-                      <span>🎓 الصف ينتهي بعد حصة {classSwap.classEndPeriod}</span>
-                      <span className="bg-white/20 px-1 rounded text-[6px]">(حصة {classSwap.swappedPeriod} ملغاة)</span>
-                    </div>
+                <div className="flex flex-col gap-1 items-center">
+                  <div className="text-[10px] font-bold text-indigo-900">
+                    <span>حصة {period}</span>
                   </div>
-                )}
-                <div className="flex flex-col gap-1">
-                  <div className="text-[10px] font-bold text-indigo-900 flex items-center justify-center gap-1">
-                    <span>{cls.name}</span>
-                    {/* NEW: Early dismissal indicator next to class name */}
+                  {selectedMode && (
+                    <button
+                      onClick={() => onTogglePeriod(period)}
+                      className={`w-full px-2 py-0.5 rounded text-[7px] font-bold transition-all ${
+                        isPeriodSelected
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white text-gray-600 hover:bg-indigo-50'
+                      }`}
+                    >
+                      {isPeriodSelected ? '✓ محدد' : 'اختيار'}
+                    </button>
+                  )}
+                </div>
+              </th>
+            );
+          })}
+        </tr>
+      </thead>
+      <tbody>
+        {classes.map(cls => {
+          const isSelected = selectedClasses.includes(cls.id);
+          const classSwap = classSwaps[cls.id];
+          return (
+            <tr key={cls.id} className="border-b border-indigo-200">
+              {/* Class Name (sticky left) */}
+              <td className="sticky right-0 z-10 bg-indigo-100 border border-indigo-300 p-2 text-center font-black text-indigo-900">
+                <div className="flex flex-col items-center gap-1">
+                  {/* Early dismissal banner */}
+                  {classSwap && (
+                    <div className="w-full mb-1">
+                      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-2 py-1 rounded text-[7px] font-black flex items-center justify-center gap-1 shadow-lg whitespace-nowrap">
+                        <GraduationCap size={10} />
+                        <span>🎓 ينتهي بعد حصة {classSwap.classEndPeriod}</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="text-[10px] font-bold text-indigo-900 flex flex-wrap items-center justify-center gap-1">
+                    <span className="whitespace-nowrap">{cls.name}</span>
                     {classSwap && (
                       <span 
-                        className="inline-flex items-center gap-0.5 px-1 py-0.5 bg-gradient-to-r from-emerald-400 to-teal-400 text-white rounded text-[6px] font-black shadow-sm animate-pulse"
+                        className="inline-flex items-center gap-0.5 px-1 py-0.5 bg-gradient-to-r from-emerald-400 to-teal-400 text-white rounded text-[6px] font-black shadow-sm animate-pulse whitespace-nowrap"
                         title={`الصف ينتهي بعد حصة ${classSwap.classEndPeriod}`}
                       >
                         <GraduationCap size={8} />
@@ -193,37 +222,10 @@ const DistributionTable: React.FC<DistributionTableProps> = ({
                     </button>
                   )}
                 </div>
-              </th>
-            );
-          })}
-        </tr>
-      </thead>
-      <tbody>
-        {periods.map(period => {
-          const isPeriodSelected = selectedPeriods.includes(period);
-          return (
-            <tr key={period} className="border-b border-indigo-200">
-              {/* Period Number (sticky left) */}
-              <td className="sticky right-0 z-10 bg-indigo-100 border border-indigo-300 p-2 text-center font-black text-indigo-900">
-                <div className="flex flex-col items-center gap-1">
-                  <div className="text-base">{period}</div>
-                  {selectedMode && (
-                    <button
-                      onClick={() => onTogglePeriod(period)}
-                      className={`w-full px-2 py-0.5 rounded text-[7px] font-bold transition-all ${
-                        isPeriodSelected
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-white text-gray-600 hover:bg-indigo-50'
-                      }`}
-                    >
-                      {isPeriodSelected ? '✓' : '○'}
-                    </button>
-                  )}
-                </div>
               </td>
 
               {/* Lesson Cells */}
-              {classes.map(cls => {
+              {periods.map(period => {
                 const normDay = normalizeArabic(dayName);
                 const lesson = lessons.find(
                   l =>
@@ -529,6 +531,8 @@ const DistributionTable: React.FC<DistributionTableProps> = ({
         })}
       </tbody>
     </table>
+      </div>
+    </div>
   );
 };
 

@@ -145,11 +145,47 @@ const Workspace: React.FC<WorkspaceProps> = ({
   
   const modals = useWorkspaceModals();
 
+  // Build assignments from substitutionLogs for current date
+  const currentDateAssignments = useMemo(() => {
+    const dateStr = toLocalISOString(workspaceView.viewDate);
+    const normDay = normalizeArabic(workspaceView.selectedDay);
+    const result: Record<string, Array<{ teacherId: number; reason: string }>> = {};
+
+    // Get substitution logs for current date
+    const todayLogs = substitutionLogs.filter(log => log.date === dateStr);
+    
+    todayLogs.forEach(log => {
+      const key = `${log.classId}-${log.period}`;
+      if (!result[key]) {
+        result[key] = [];
+      }
+      result[key].push({
+        teacherId: log.substituteId,
+        reason: log.reason || ''
+      });
+    });
+
+    // Merge with manual assignments from hook
+    Object.entries(manualAssignments.assignments).forEach(([key, assigns]) => {
+      if (!result[key]) {
+        result[key] = [];
+      }
+      assigns.forEach(assign => {
+        // Only add if not already in the list
+        if (!result[key].some(a => a.teacherId === assign.teacherId)) {
+          result[key].push(assign);
+        }
+      });
+    });
+
+    return result;
+  }, [substitutionLogs, manualAssignments.assignments, workspaceView.viewDate, workspaceView.selectedDay]);
+
   const workspaceFilters = useWorkspaceFilters({
     lessons,
     employees,
     absences,
-    assignments: manualAssignments.assignments,
+    assignments: currentDateAssignments,
     substitutionLogs,
     viewDate: workspaceView.viewDate,
     dayName: workspaceView.selectedDay
@@ -163,6 +199,9 @@ const Workspace: React.FC<WorkspaceProps> = ({
   const [periods, setPeriods] = useState<number[]>([]);
   const [saveForm, setSaveForm] = useState({ title: '', description: '' });
   const [showAbsenceFormModal, setShowAbsenceFormModal] = useState(false);
+  const [showEarlyDismissalSummary, setShowEarlyDismissalSummary] = useState(true);
+  const [showAbsenceProtocol, setShowAbsenceProtocol] = useState(true);
+  const [showModeSelection, setShowModeSelection] = useState(true);
 
   // ==========================================================================
   // EFFECTS
@@ -249,11 +288,11 @@ const Workspace: React.FC<WorkspaceProps> = ({
     }> = [];
 
     console.log('🔍 Checking for early dismissals...', {
-      totalAssignments: Object.keys(manualAssignments.assignments).length,
-      assignments: manualAssignments.assignments
+      totalAssignments: Object.keys(currentDateAssignments).length,
+      assignments: currentDateAssignments
     });
 
-    Object.entries(manualAssignments.assignments).forEach(
+    Object.entries(currentDateAssignments).forEach(
       ([key, assignList]: [string, Array<{ teacherId: number; reason: string }>]) => {
         assignList.forEach(assign => {
           console.log('📝 Assignment reason:', assign.reason);
@@ -296,7 +335,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
 
     console.log('📊 Early dismissal classes:', result);
     return result;
-  }, [manualAssignments.assignments, classesData, employees, workspaceView.viewDate, workspaceView.selectedDay]);
+  }, [currentDateAssignments, classesData, employees, workspaceView.viewDate, workspaceView.selectedDay]);
 
   // ==========================================================================
   // HANDLERS
@@ -361,13 +400,50 @@ const Workspace: React.FC<WorkspaceProps> = ({
       />
 
       <div className="flex-1 overflow-hidden flex flex-col py-0.5 gap-1">
-        <AbsenceProtocolCard
-          isVisible={modals.showAbsenceProtocol}
-          onClose={modals.closeAbsenceProtocol}
-          activeStage={modals.activeProtocolStage}
-          onStageClick={handleAbsenceStageClick}
-          poolCount={localPoolIds.length}
-        />
+        {/* Toggle Button for Absence Protocol */}
+        <div className="mx-2">
+          <button
+            onClick={() => setShowAbsenceProtocol(!showAbsenceProtocol)}
+            className="w-full px-3 py-1.5 bg-gradient-to-r from-purple-100 to-indigo-100 hover:from-purple-200 hover:to-indigo-200 border border-purple-300 rounded-lg shadow-sm transition-all flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-black text-purple-800 flex items-center gap-1">
+                <span className="text-base">📋</span>
+                <span>بروتوكول توثيق الغياب</span>
+                {localPoolIds.length > 0 && (
+                  <span className="bg-purple-500 text-white px-1.5 py-0.5 rounded-full text-[9px] font-black">
+                    {localPoolIds.length}
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 text-purple-700">
+              <span className="text-[9px] font-bold">
+                {showAbsenceProtocol ? 'إخفاء' : 'إظهار'}
+              </span>
+              <svg
+                className={`w-4 h-4 transition-transform ${
+                  showAbsenceProtocol ? 'rotate-180' : ''
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </button>
+        </div>
+
+        {showAbsenceProtocol && (
+          <AbsenceProtocolCard
+            isVisible={modals.showAbsenceProtocol}
+            onClose={modals.closeAbsenceProtocol}
+            activeStage={modals.activeProtocolStage}
+            onStageClick={handleAbsenceStageClick}
+            poolCount={localPoolIds.length}
+          />
+        )}
 
         {!workspaceView.isSchoolDay.isSchool ? (
           <HolidayDisplay
@@ -411,53 +487,147 @@ const Workspace: React.FC<WorkspaceProps> = ({
 
             {/* NEW: Early Dismissal Summary Box */}
             {earlyDismissalClasses.length > 0 && (
-              <div className="mx-2 mb-2 p-3 bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-400 rounded-xl shadow-md">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-[11px] font-black text-emerald-800 flex items-center gap-1">
-                    <span className="text-base">🎓</span>
-                    <span>صفوف تنتهي مبكراً اليوم</span>
-                    <span className="bg-emerald-500 text-white px-1.5 py-0.5 rounded-full text-[9px] font-black ml-1">
-                      {earlyDismissalClasses.length}
+              <div className="mx-2 mb-2">
+                {/* Toggle Button */}
+                <button
+                  onClick={() => setShowEarlyDismissalSummary(!showEarlyDismissalSummary)}
+                  className="w-full mb-1 px-3 py-1.5 bg-gradient-to-r from-emerald-100 to-teal-100 hover:from-emerald-200 hover:to-teal-200 border border-emerald-300 rounded-lg shadow-sm transition-all flex items-center justify-between group"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-black text-emerald-800 flex items-center gap-1">
+                      <span className="text-base">🎓</span>
+                      <span>صندوق المغادرة المبكرة</span>
+                      <span className="bg-emerald-500 text-white px-1.5 py-0.5 rounded-full text-[9px] font-black">
+                        {earlyDismissalClasses.length}
+                      </span>
                     </span>
-                  </h3>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {earlyDismissalClasses.map((item, idx) => (
-                    <div
-                      key={`${item.classId}-${idx}`}
-                      className="flex items-center gap-2 px-2 py-1.5 bg-white border border-emerald-200 rounded-lg shadow-sm"
+                  </div>
+                  <div className="flex items-center gap-1 text-emerald-700">
+                    <span className="text-[9px] font-bold">
+                      {showEarlyDismissalSummary ? 'إخفاء' : 'إظهار'}
+                    </span>
+                    <svg
+                      className={`w-4 h-4 transition-transform ${
+                        showEarlyDismissalSummary ? 'rotate-180' : ''
+                      }`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      <span className="text-[10px] font-black text-emerald-900">{item.className}</span>
-                      <span className="text-emerald-500 text-[9px]">→</span>
-                      <span className="text-[9px] font-bold text-emerald-700">
-                        ينتهي بعد حصة {item.classEndPeriod}
-                      </span>
-                      <span className="text-[8px] text-gray-500 italic">
-                        (الحصة {item.cancelledPeriod} ملغاة)
-                      </span>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
+
+                {/* Summary Content */}
+                {showEarlyDismissalSummary && (
+                  <div className="p-3 bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-400 rounded-xl shadow-md animate-in slide-in-from-top duration-200">
+                    <div className="flex flex-wrap gap-2">
+                      {earlyDismissalClasses.map((item, idx) => (
+                        <div
+                          key={`${item.classId}-${idx}`}
+                          className="flex items-center gap-2 px-2 py-1.5 bg-white border border-emerald-200 rounded-lg shadow-sm"
+                        >
+                          <span className="text-[10px] font-black text-emerald-900">{item.className}</span>
+                          <span className="text-emerald-500 text-[9px]">→</span>
+                          <span className="text-[9px] font-bold text-emerald-700">
+                            ينتهي بعد حصة {item.classEndPeriod}
+                          </span>
+                          <span className="text-[8px] text-gray-500 italic">
+                            (الحصة {item.cancelledPeriod} ملغاة)
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
               </div>
             )}
 
-            <ModeSelectionPanel
-              selectedMode={workspaceMode.selectedMode}
-              confirmedModes={workspaceMode.confirmedModes}
-              onModeToggle={workspaceMode.handleModeToggle}
-              onAutoDistribute={distribution.handleAutoDistribute}
-            />
+            {/* Toggle Button for Mode Selection */}
+            <div className="mx-2">
+              <button
+                onClick={() => setShowModeSelection(!showModeSelection)}
+                className="w-full px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 hover:from-blue-200 hover:to-indigo-200 border border-blue-300 rounded-lg shadow-sm transition-all flex items-center justify-between group"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-black text-blue-800 flex items-center gap-1">
+                    <span className="text-base">🎯</span>
+                    <span>اختر النمط</span>
+                    {workspaceMode.confirmedModes.length > 0 && (
+                      <span className="bg-blue-500 text-white px-1.5 py-0.5 rounded-full text-[9px] font-black">
+                        {workspaceMode.confirmedModes.length}
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 text-blue-700">
+                  <span className="text-[9px] font-bold">
+                    {showModeSelection ? 'إخفاء' : 'إظهار'}
+                  </span>
+                  <svg
+                    className={`w-4 h-4 transition-transform ${
+                      showModeSelection ? 'rotate-180' : ''
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </button>
+            </div>
+
+            {showModeSelection && (
+              <ModeSelectionPanel
+                selectedMode={workspaceMode.selectedMode}
+                confirmedModes={workspaceMode.confirmedModes}
+                onModeToggle={workspaceMode.handleModeToggle}
+                onAutoDistribute={distribution.handleAutoDistribute}
+              />
+            )}
 
             {workspaceMode.selectedMode && <TeacherStatusLegend isVisible={true} />}
 
             <div className="flex-1 bg-white/70 backdrop-blur-md rounded-l-xl border border-indigo-400 shadow-2xl flex flex-col min-h-0">
-              <div className="p-2 border-b border-gray-200 bg-indigo-50/80 backdrop-blur-sm shrink-0">
-                <h2 className="text-[10px] font-black text-gray-800">
-                  📊 جدول التوزيع التفاعلي
-                </h2>
+              {/* Enhanced Table Header */}
+              <div className="p-3 border-b-2 border-indigo-300 bg-gradient-to-r from-indigo-100 via-blue-100 to-purple-100 backdrop-blur-sm shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                      <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-[13px] font-black text-indigo-900">
+                        📊 جدول التوزيع التفاعلي
+                      </h2>
+                      <p className="text-[9px] text-indigo-600 font-medium">
+                        عرض شامل لجدول الحصص والغيابات
+                      </p>
+                    </div>
+                  </div>
+                  {/* Status indicators */}
+                  <div className="flex items-center gap-2">
+                    {workspaceMode.confirmedModes.length > 0 && (
+                      <div className="flex items-center gap-1 px-2 py-1 bg-blue-500 text-white rounded-lg text-[9px] font-bold shadow-sm">
+                        <span>🎯</span>
+                        <span>{workspaceMode.confirmedModes.length} نمط مفعّل</span>
+                      </div>
+                    )}
+                    {earlyDismissalClasses.length > 0 && (
+                      <div className="flex items-center gap-1 px-2 py-1 bg-emerald-500 text-white rounded-lg text-[9px] font-bold shadow-sm">
+                        <span>🎓</span>
+                        <span>{earlyDismissalClasses.length} مغادرة مبكرة</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              <div className="flex-1 overflow-auto">
+              <div className="flex-1 flex flex-col overflow-hidden">
                 <DistributionTable
                   classes={sortedClasses}
                   periods={periods}
@@ -466,7 +636,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
                   selectedClasses={workspaceMode.selectedClasses}
                   selectedPeriods={workspaceMode.selectedPeriods}
                   selectedMode={workspaceMode.selectedMode}
-                  assignments={manualAssignments.assignments}
+                  assignments={currentDateAssignments}
                   distributionGrid={distribution.grid}
                   absences={absences}
                   substitutionLogs={substitutionLogs}
