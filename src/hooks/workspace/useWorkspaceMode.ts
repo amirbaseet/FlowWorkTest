@@ -1,8 +1,9 @@
 // src/hooks/workspace/useWorkspaceMode.ts
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { ScheduleConfig, EngineContext } from '@/types';
 import { getModeMetadata } from '@/utils/modeMetadata';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 export interface UseWorkspaceModeReturn {
   selectedMode: string;
@@ -67,13 +68,15 @@ export const useWorkspaceMode = ({
   addToast
 }: UseWorkspaceModeProps): UseWorkspaceModeReturn => {
   
-  // State
-  const [selectedMode, setSelectedMode] = useState<string>('');
-  const [confirmedModes, setConfirmedModes] = useState<Array<{
+  // Persistent State with localStorage
+  const [confirmedModes, setConfirmedModes] = useLocalStorage<Array<{
     modeId: string;
     classes: string[];
     periods: number[];
-  }>>([]);
+  }>>('workspace_confirmedModes', []);
+  
+  // Temporary selection state (no need to persist)
+  const [selectedMode, setSelectedMode] = useState<string>('');
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [selectedPeriods, setSelectedPeriods] = useState<number[]>([]);
   const [activeDistributionIndex, setActiveDistributionIndex] = useState<number | null>(null);
@@ -188,7 +191,15 @@ export const useWorkspaceMode = ({
   const removeConfirmedMode = useCallback((index: number) => {
     setConfirmedModes(prev => prev.filter((_, i) => i !== index));
     addToast('تم إزالة النمط', 'info');
-  }, [addToast]);
+  }, [addToast, setConfirmedModes]);
+
+  // Show restore notification on mount if data exists
+  useEffect(() => {
+    if (confirmedModes.length > 0) {
+      console.log('🔄 [useWorkspaceMode] Restored confirmed modes:', confirmedModes);
+      addToast(`✅ تم استعادة ${confirmedModes.length} نمط مفعّل`, 'success');
+    }
+  }, []); // Only on mount
 
   return {
     selectedMode,

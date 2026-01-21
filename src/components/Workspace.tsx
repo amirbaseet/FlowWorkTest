@@ -151,8 +151,17 @@ const Workspace: React.FC<WorkspaceProps> = ({
     const normDay = normalizeArabic(workspaceView.selectedDay);
     const result: Record<string, Array<{ teacherId: number; reason: string }>> = {};
 
+    console.log('🔄 [Workspace] Building currentDateAssignments', {
+      dateStr,
+      normDay,
+      totalLogs: substitutionLogs.length,
+      manualAssignmentsCount: Object.keys(manualAssignments.assignments).length
+    });
+
     // Get substitution logs for current date
     const todayLogs = substitutionLogs.filter(log => log.date === dateStr);
+    
+    console.log('📊 [Workspace] Today logs:', todayLogs.length);
     
     todayLogs.forEach(log => {
       const key = `${log.classId}-${log.period}`;
@@ -176,6 +185,11 @@ const Workspace: React.FC<WorkspaceProps> = ({
           result[key].push(assign);
         }
       });
+    });
+
+    console.log('✅ [Workspace] Final currentDateAssignments:', {
+      totalSlots: Object.keys(result).length,
+      assignments: result
     });
 
     return result;
@@ -355,32 +369,76 @@ const Workspace: React.FC<WorkspaceProps> = ({
   };
 
   const handleUndoClassSwap = useCallback((classId: string, cancelledPeriod: number) => {
-    console.log('🔄 Undo class swap:', { classId, cancelledPeriod });
+    console.log('🔄 [Undo] Starting undo for class swap:', { classId, cancelledPeriod });
     
-    // The assignment is stored at the CANCELLED PERIOD (last period), not original period
+    const dateStr = toLocalISOString(workspaceView.viewDate);
+    
+    // Find the substitution log entry for this swap
+    const swapLog = substitutionLogs.find(log => 
+      log.classId === classId &&
+      log.period === cancelledPeriod &&
+      log.date === dateStr &&
+      log.reason && log.reason.includes('تبديل صفي')
+    );
+    
+    console.log('🔍 [Undo] Looking for swap log:', swapLog);
+    
+    if (!swapLog) {
+      console.error('❌ [Undo] No swap log found');
+      addToast('❌ لم يتم العثور على التبديل', 'error');
+      return;
+    }
+
+    console.log('✅ [Undo] Found swap log, removing:', swapLog);
+    
+    // 1. Remove from substitutionLogs (persistent storage)
+    if (setSubstitutionLogs) {
+      setSubstitutionLogs(prev => prev.filter(log => log.id !== swapLog.id));
+      console.log('✅ [Undo] Removed from substitutionLogs');
+    }
+    
+    // 2. Remove from manual assignments (in-memory)
     const key = `${classId}-${cancelledPeriod}`;
     const assignmentsForKey = manualAssignments.assignments[key];
-    
-    console.log('🔍 Looking for assignment at key:', key, assignmentsForKey);
-    
-    if (!assignmentsForKey) {
-      addToast('❌ لم يتم العثور على التبديل', 'error');
-      return;
+    if (assignmentsForKey) {
+      const swapAssignment = assignmentsForKey.find(a => a.reason.includes('تبديل صفي'));
+      if (swapAssignment) {
+        manualAssignments.handleRemove(classId, cancelledPeriod, swapAssignment.teacherId);
+        console.log('✅ [Undo] Removed from manual assignments');
+      }
     }
-
-    // Find the class-based swap assignment
-    const swapAssignment = assignmentsForKey.find(a => a.reason.includes('تبديل صفي'));
     
-    if (!swapAssignment) {
-      addToast('❌ لم يتم العثور على التبديل', 'error');
-      return;
+    // 3. Update absence record - remove the cancelled period from affected periods
+    if (setAbsences && swapLog.absentTeacherId) {
+      setAbsences(prev => prev.map(absence => {
+        if (
+          absence.teacherId === swapLog.absentTeacherId &&
+          absence.date === dateStr &&
+          absence.type === 'PARTIAL' &&
+          absence.affectedPeriods?.includes(cancelledPeriod)
+        ) {
+          const updatedPeriods = absence.affectedPeriods.filter(p => p !== cancelledPeriod);
+          console.log('✅ [Undo] Updated absence periods:', { before: absence.affectedPeriods, after: updatedPeriods });
+          
+          // If no periods left, we could remove the absence entirely
+          if (updatedPeriods.length === 0) {
+            // Return null to signal removal (we'll filter it out below)
+            return null as any;
+          }
+          
+          return {
+            ...absence,
+            affectedPeriods: updatedPeriods,
+            updatedAt: new Date().toISOString()
+          };
+        }
+        return absence;
+      }).filter(Boolean)); // Remove null entries
     }
-
-    console.log('✅ Found swap assignment, removing:', swapAssignment);
-    // Remove the assignment using handleRemove
-    manualAssignments.handleRemove(classId, cancelledPeriod, swapAssignment.teacherId);
+    
     addToast('✅ تم التراجع عن التبديل بنجاح', 'success');
-  }, [manualAssignments, addToast]);
+    console.log('✅ [Undo] Undo completed successfully');
+  }, [workspaceView.viewDate, substitutionLogs, setSubstitutionLogs, manualAssignments, setAbsences, addToast]);
 
   // ==========================================================================
   // RENDER
@@ -611,6 +669,13 @@ const Workspace: React.FC<WorkspaceProps> = ({
                   </div>
                   {/* Status indicators */}
                   <div className="flex items-center gap-2">
+                    {/* Auto-save indicator */}
+                    <div className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-lg text-[9px] font-bold shadow-sm border border-green-300">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>حفظ تلقائي</span>
+                    </div>
                     {workspaceMode.confirmedModes.length > 0 && (
                       <div className="flex items-center gap-1 px-2 py-1 bg-blue-500 text-white rounded-lg text-[9px] font-bold shadow-sm">
                         <span>🎯</span>
