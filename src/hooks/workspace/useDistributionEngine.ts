@@ -146,7 +146,7 @@ export const useDistributionEngine = ({
           const slotKey = `${cls}-${period}`;
 
           if (best && best.score > 0) {
-            console.log(`✅ Selected: ${best.employee.name} (Score: ${best.score})`);
+            console.log(` Selected: ${best.employee.name} (Score: ${best.score})`);
             newDistribution[slotKey] = {
               originalTeacher: originalLesson.teacherId,
               substituteId: best.employee.id,
@@ -186,7 +186,7 @@ export const useDistributionEngine = ({
       onBulkAssign(newAssignments);
     }
 
-    console.log(`✅ Live distribution: ${Object.keys(newDistribution).length} slots`);
+    console.log(` Live distribution: ${Object.keys(newDistribution).length} slots`);
     return newDistribution;
   }, [
     showDistribution,

@@ -245,7 +245,7 @@ export const autoAssignClassroomAssistants = (
         
         if (assignedCount > 0) {
             addToast(
-                `✅ تم تعيين ${classroomAssistant.name} (مساعدة الصف) في ${assignedCount} حصة تلقائياً`,
+                ` تم تعيين ${classroomAssistant.name} (مساعدة الصف) في ${assignedCount} حصة تلقائياً`,
                 'success'
             );
         }

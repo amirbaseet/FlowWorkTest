@@ -413,7 +413,7 @@ export const enableAutoSave = (
       );
       
       saveRollbackPoint(point);
-      console.log('✅ Auto-save successful:', point.id);
+      console.log(' Auto-save successful:', point.id);
     } catch (error) {
       console.error('❌ Auto-save failed:', error);
     }

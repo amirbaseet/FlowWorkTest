@@ -293,7 +293,7 @@ export const useAbsenceForm = ({
     );
 
     const handleBatchAutoAssign = useCallback(() => {
-        // ✅ حساب الحصص المتأثرة بناءً على boardViewDate
+        //  حساب الحصص المتأثرة بناءً على boardViewDate
         const dayName = getSafeDayName(boardViewDate);
         const normDay = normalizeArabic(dayName);
         
@@ -376,7 +376,7 @@ export const useAbsenceForm = ({
                 
                 const batchAssignments: Record<string, number[]> = {};
                 
-                // ✅ استخدام currentAffectedLessons
+                //  استخدام currentAffectedLessons
                 currentAffectedLessons.forEach(l => {
                     const isNonCoverable = 
                         l.type === 'stay' || 
@@ -524,7 +524,7 @@ export const useAbsenceForm = ({
                 
                 setSubstitutions(newSubs);
                 
-                // ✅ تحديث Board
+                //  تحديث Board
                 const boardSubs = newSubs.filter(s => s.date === boardViewDate);
                 const newAssignments = boardSubs.reduce((acc, sub) => {
                     acc[`${sub.absentTeacherId}-${sub.period}`] = sub.substituteId;
@@ -535,7 +535,7 @@ export const useAbsenceForm = ({
                 setAssignmentVersion(v => v + 1);
                 
                 if (assignedCount > 0) {
-                    addToast(`✅ تم توزيع ${assignedCount} حصة بنجاح`, 'success');
+                    addToast(` تم توزيع ${assignedCount} حصة بنجاح`, 'success');
                 } else {
                     addToast('⚠️ لم يتم العثور على بدلاء متاحين', 'warning');
                 }
@@ -611,7 +611,7 @@ export const useAbsenceForm = ({
             reason: template.reason
         })));
 
-        addToast('✅ تم تطبيق التفاصيل على جميع المعلمين', 'success');
+        addToast(' تم تطبيق التفاصيل على جميع المعلمين', 'success');
     }, [selectedTeachers, addToast]);
 
     const handleBoardAssign = useCallback((slotKey: string, substituteId: number | null) => {
@@ -670,7 +670,7 @@ export const useAbsenceForm = ({
         setAssignmentVersion(v => v + 1);
         
         addToast(
-            `✅ تم تعيين ${newSubs.length} حصة بشكل جماعي`,
+            ` تم تعيين ${newSubs.length} حصة بشكل جماعي`,
             'success'
         );
     }, [selectedTeachers, periods, boardViewDate, lessons, employees, addToast]);

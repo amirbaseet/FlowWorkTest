@@ -48,7 +48,7 @@ export function useAbsence() {
 
         setCoverageRequests([...filteredRequests, ...createdRequests]);
 
-        console.log(`✅ Created absence for teacher ${absence.teacherId} with ${createdRequests.length} coverage requests`);
+        console.log(` Created absence for teacher ${absence.teacherId} with ${createdRequests.length} coverage requests`);
     };
 
     const handleAssignSubstitute = (coverageRequestId: string, substituteId: number) => {
@@ -138,7 +138,7 @@ export function useAbsence() {
             ));
         }
 
-        console.log(`✅ Assigned substitute ${substituteId} to coverage request ${coverageRequestId}`);
+        console.log(` Assigned substitute ${substituteId} to coverage request ${coverageRequestId}`);
     };
 
     const handleCancelCoverageRequest = (coverageRequestId: string) => {

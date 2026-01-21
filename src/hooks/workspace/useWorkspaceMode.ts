@@ -164,7 +164,7 @@ export const useWorkspaceMode = ({
     setSelectedPeriods([]);
     setShowDistribution(false);
     
-    addToast(`✅ تم تثبيت النمط بنجاح`, 'success');
+    addToast(` تم تثبيت النمط بنجاح`, 'success');
   }, [selectedMode, selectedClasses, selectedPeriods, confirmedModes, addToast]);
 
   const toggleClass = useCallback((classId: string) => {
@@ -197,7 +197,7 @@ export const useWorkspaceMode = ({
   useEffect(() => {
     if (confirmedModes.length > 0) {
       console.log('🔄 [useWorkspaceMode] Restored confirmed modes:', confirmedModes);
-      addToast(`✅ تم استعادة ${confirmedModes.length} نمط مفعّل`, 'success');
+      addToast(` تم استعادة ${confirmedModes.length} نمط مفعّل`, 'success');
     }
   }, []); // Only on mount
 

@@ -111,7 +111,7 @@ export const useCalendarIntegration = ({
     // Save substitution logs
     setSubstitutionLogs(prev => [...prev, ...newLogs]);
 
-    addToast(`✅ تم حفظ ${newEvents.length} فعاليات و ${newLogs.length} تكليفات في الرزنامة`, 'success');
+    addToast(` تم حفظ ${newEvents.length} فعاليات و ${newLogs.length} تكليفات في الرزنامة`, 'success');
 
     // Call success callback
     if (onSuccess) {

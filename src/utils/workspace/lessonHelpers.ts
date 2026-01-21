@@ -269,7 +269,7 @@ export function getCoverageStatus(
   if (hasManualAssignment || hasSubstitutionLog) {
     return {
       status: 'absent-covered',
-      icon: '✅',
+      icon: '',
       color: 'text-emerald-600',
       label: 'مغطى'
     };

@@ -189,7 +189,7 @@ export const useAutoDistribution = ({
                 // Success
                 if (assignedCount > 0) {
                     addToast(
-                        `✅ تم توزيع ${assignedCount} حصة بنجاح`,
+                        ` تم توزيع ${assignedCount} حصة بنجاح`,
                         'success'
                     );
                 } else {

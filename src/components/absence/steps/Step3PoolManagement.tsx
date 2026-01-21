@@ -79,7 +79,7 @@ export const Step3PoolManagement: React.FC<Step3PoolManagementProps> = ({
                     <div>
                         <p className="font-black mb-1">نوعان من المعلمين:</p>
                         <ul className="text-[10px] space-y-1">
-                            <li>✅ <span className="font-bold">متاح:</span> لديه حصص اليوم ولديه فراغ</li>
+                            <li> <span className="font-bold">متاح:</span> لديه حصص اليوم ولديه فراغ</li>
                             <li>📞 <span className="font-bold">مستدعى:</span> ليس لديه حصص اليوم، سيتم استدعاؤه</li>
                         </ul>
                     </div>
@@ -168,7 +168,7 @@ export const Step3PoolManagement: React.FC<Step3PoolManagementProps> = ({
                                         {emp.name}
                                     </p>
                                     <p className="text-[9px] text-emerald-600 font-medium">
-                                        ✅ لديه فراغ
+                                         لديه فراغ
                                     </p>
                                 </div>
                                 <UserPlus size={14} className="text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity" />

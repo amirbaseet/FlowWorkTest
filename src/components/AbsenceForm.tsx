@@ -439,13 +439,13 @@ const AbsenceForm: React.FC<AbsenceFormProps> = ({
                                     stageData.selectedTeachers = selectedTeachers;
                                     stageData.globalStartDate = globalStartDate;
                                     stageData.globalEndDate = globalEndDate;
-                                    addToast(`✅ تم حفظ ${selectedTeachers.length} معلم غائب`, 'success');
+                                    addToast(` تم حفظ ${selectedTeachers.length} معلم غائب`, 'success');
                                 } else if (step === 2) {
                                     // Stage 2: Save absence details
                                     stageData.selectedTeachers = selectedTeachers;
                                     stageData.globalStartDate = globalStartDate;
                                     stageData.globalEndDate = globalEndDate;
-                                    addToast('✅ تم حفظ تفاصيل الغياب', 'success');
+                                    addToast(' تم حفظ تفاصيل الغياب', 'success');
                                 } else if (step === 3) {
                                     // Stage 3: Save pool
                                     stageData.activeExternalIds = activeExternalIds;
@@ -455,7 +455,7 @@ const AbsenceForm: React.FC<AbsenceFormProps> = ({
                                         onPoolUpdate(activeExternalIds);
                                     }
                                     
-                                    addToast(`✅ تم حفظ بنك الاحتياط (${activeExternalIds.length} معلم)`, 'success');
+                                    addToast(` تم حفظ بنك الاحتياط (${activeExternalIds.length} معلم)`, 'success');
                                 } else if (step === 6) {
                                     // Stage 6: Save substitutions
                                     stageData.substitutions = substitutions;
@@ -467,7 +467,7 @@ const AbsenceForm: React.FC<AbsenceFormProps> = ({
                                         });
                                     }
                                     
-                                    addToast(`✅ تم حفظ التوزيع (${substitutions.length} تعيين)`, 'success');
+                                    addToast(` تم حفظ التوزيع (${substitutions.length} تعيين)`, 'success');
                                 }
 
                                 if (onStageSave) {

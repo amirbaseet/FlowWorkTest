@@ -144,7 +144,7 @@ const RollbackManager: React.FC<RollbackManagerProps> = ({
     
     if (result.success) {
       loadPoints();
-      alert('✅ تم استيراد نقطة التراجع بنجاح');
+      alert(' تم استيراد نقطة التراجع بنجاح');
     } else {
       alert(`❌ فشل الاستيراد: ${result.error}`);
     }

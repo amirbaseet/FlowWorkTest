@@ -18,11 +18,11 @@ interface AvailableTeachersPopupProps {
     individualCandidates: AvailableTeacherInfo[];
     stayCandidates: AvailableTeacherInfo[];
     availableCandidates: AvailableTeacherInfo[];
-    onCallCandidates: AvailableTeacherInfo[]; // ✅ NEW
+    onCallCandidates: AvailableTeacherInfo[]; //  NEW
   };
   onSelectTeacher: (teacherId: number, swapWithLast?: boolean, swapType?: 'substitute-based' | 'class-based', classSwapInfo?: any) => void;
-  activeExternalIds?: number[]; // ✅ NEW: Reserve pool IDs
-  employees: Employee[]; // ✅ NEW: To lookup missing pool teachers
+  activeExternalIds?: number[]; //  NEW: Reserve pool IDs
+  employees: Employee[]; //  NEW: To lookup missing pool teachers
 }
 
 const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
@@ -31,7 +31,7 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
   lesson,
   availableTeachers,
   onSelectTeacher,
-  activeExternalIds = [], // ✅ NEW: Reserve pool IDs with default
+  activeExternalIds = [], //  NEW: Reserve pool IDs with default
   employees
 }) => {
   // NEW: State for swap confirmation modal
@@ -50,15 +50,15 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
     individualCandidates,
     stayCandidates,
     availableCandidates,
-    onCallCandidates = [] // ✅ NEW: Default to empty array for backward compatibility
+    onCallCandidates = [] //  NEW: Default to empty array for backward compatibility
   } = availableTeachers;
 
-  // ✅ NEW: Helper to check if teacher is in pool
+  //  NEW: Helper to check if teacher is in pool
   const isInPool = (teacherId: number): boolean => {
     return activeExternalIds.includes(teacherId);
   };
 
-  // ✅ NEW: Split all candidates into pool vs non-pool
+  //  NEW: Split all candidates into pool vs non-pool
   const poolTeachers: AvailableTeacherInfo[] = [];
   const poolTeacherIds = new Set(activeExternalIds); // For quick lookup
   const foundPoolIds = new Set<number>(); // Track which pool teachers we found
@@ -72,7 +72,7 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
     onCall: [] as AvailableTeacherInfo[]
   };
 
-  // ✅ NEW: Separate pool teachers from all categories
+  //  NEW: Separate pool teachers from all categories
   // Build collections by iterating through original category arrays
   educatorCandidates.forEach(teacher => {
     if (isInPool(teacher.teacherId)) {
@@ -128,7 +128,7 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
     }
   });
 
-  // ✅ NEW: Add missing pool teachers (those who are busy/absent)
+  //  NEW: Add missing pool teachers (those who are busy/absent)
   // These teachers are in the pool but not in available candidates
   activeExternalIds.forEach(poolId => {
     if (!foundPoolIds.has(poolId)) {
@@ -150,7 +150,7 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
     }
   });
 
-  // ✅ NEW: Sort pool teachers by priority
+  //  NEW: Sort pool teachers by priority
   poolTeachers.sort((a, b) => a.priority - b.priority);
 
   const totalCount =
@@ -161,7 +161,7 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
     availableCandidates.length +
     onCallCandidates.length;
 
-  // ✅ NEW: Helper function for category-specific styling
+  //  NEW: Helper function for category-specific styling
   const getCategoryInfo = (category: string, isOnCall?: boolean) => {
     if (isOnCall) {
       return {
@@ -214,7 +214,7 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
       default:
         return {
           label: 'متاح',
-          icon: '✅',
+          icon: '',
           bgColor: '#ECFDF5',
           textColor: '#059669',
           badgeBg: '#D1FAE5',
@@ -292,7 +292,7 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
               </div>
             )}
 
-            {/* ✅ NEW: On-call warning badge */}
+            {/*  NEW: On-call warning badge */}
             {teacher.isOnCall && (
               <div className="text-xs text-orange-600 font-bold bg-orange-100 px-2 py-1 rounded mt-1">
                 📞 غير موجود في المدرسة - يحتاج استدعاء
@@ -406,7 +406,7 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
           {/* ============================================ */}
-          {/* ✅ NEW: RESERVE POOL SECTION */}
+          {/*  NEW: RESERVE POOL SECTION */}
           {/* ============================================ */}
           {poolTeachers.length > 0 && (
             <div className="p-4">
@@ -497,7 +497,7 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
                                   </>
                                 ) : (
                                   <>
-                                    <span className="text-emerald-600 font-bold">✅ متاح تماماً</span>
+                                    <span className="text-emerald-600 font-bold"> متاح تماماً</span>
                                   </>
                                 )}
                               </p>
@@ -638,7 +638,7 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
             </div>
           )}
 
-          {/* ✅ On-Call Teachers (lowest priority) */}
+          {/*  On-Call Teachers (lowest priority) */}
           {nonPoolTeachers.onCall.length > 0 && (
             <div className="border-b-4 border-orange-200">
               <div className="bg-orange-50 px-4 py-2 sticky top-0 z-10">
@@ -766,7 +766,7 @@ const AvailableTeachersPopup: React.FC<AvailableTeachersPopupProps> = ({
                 className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl text-white font-black text-sm hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2 shadow-lg"
               >
                 <CheckCircle2 size={18} />
-                <span>✅ نعم، موافق</span>
+                <span> نعم، موافق</span>
               </button>
             </div>
           </div>

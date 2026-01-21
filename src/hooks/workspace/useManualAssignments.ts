@@ -153,12 +153,17 @@ export const useManualAssignments = ({
       setSubstitutionLogs(prev => [...prev, newLog]);
     }
 
-    addToast(`✅ تم تعيين ${substituteTeacher?.name || 'معلم'} بدل ${originalTeacher?.name || 'المعلم الغائب'}`, 'success');
+    addToast(` تم تعيين ${substituteTeacher?.name || 'معلم'} بدل ${originalTeacher?.name || 'المعلم الغائب'}`, 'success');
   }, [viewDate, dayName, lessons, employees, absences, setAbsences, setSubstitutionLogs, addToast]);
 
   // Handler: Remove assignment
   const handleRemove = useCallback((classId: string, period: number, teacherId: number) => {
+    console.log('🗑️ [handleRemove] Removing assignment:', { classId, period, teacherId });
+    
+    const dateStr = toLocalISOString(viewDate);
     const key = `${classId}-${period}`;
+    
+    // 1. Remove from local state (in-memory)
     setAssignments(prev => {
       const existing = prev[key] || [];
       const filtered = existing.filter(a => a.teacherId !== teacherId);
@@ -173,10 +178,54 @@ export const useManualAssignments = ({
         [key]: filtered
       };
     });
+    
+    // 2. Remove from substitutionLogs (persistent storage)
+    if (setSubstitutionLogs) {
+      setSubstitutionLogs(prev => prev.filter(log => !(
+        log.classId === classId &&
+        log.period === period &&
+        log.date === dateStr &&
+        log.substituteId === teacherId
+      )));
+      console.log('✅ [handleRemove] Removed from substitutionLogs');
+    }
+    
+    // 3. Update absence record - remove this period from affected periods
+    if (setAbsences) {
+      setAbsences(prev => prev.map(absence => {
+        // Find the absence for this slot
+        const shouldUpdate = 
+          absence.date === dateStr &&
+          absence.type === 'PARTIAL' &&
+          absence.affectedPeriods?.includes(period);
+        
+        if (shouldUpdate) {
+          const updatedPeriods = absence.affectedPeriods!.filter(p => p !== period);
+          console.log('✅ [handleRemove] Updated absence periods:', { 
+            teacherId: absence.teacherId,
+            before: absence.affectedPeriods, 
+            after: updatedPeriods 
+          });
+          
+          // If no periods left, could remove the absence entirely
+          if (updatedPeriods.length === 0) {
+            return null as any; // Will be filtered out
+          }
+          
+          return {
+            ...absence,
+            affectedPeriods: updatedPeriods,
+            updatedAt: new Date().toISOString()
+          };
+        }
+        return absence;
+      }).filter(Boolean)); // Remove null entries
+    }
 
     const teacher = employees.find(e => e.id === teacherId);
     addToast(`❌ تم إلغاء تعيين ${teacher?.name || 'معلم'}`, 'info');
-  }, [employees, addToast]);
+    console.log('✅ [handleRemove] Removal completed');
+  }, [viewDate, employees, setSubstitutionLogs, setAbsences, addToast]);
 
   // Handler: Bulk assign
   const handleBulkAssign = useCallback((newAssignments: Array<{
@@ -201,7 +250,7 @@ export const useManualAssignments = ({
       return updated;
     });
 
-    addToast(`✅ تم توزيع ${newAssignments.length} مهمة`, 'success');
+    addToast(` تم توزيع ${newAssignments.length} مهمة`, 'success');
   }, [addToast]);
 
   // Handler: Lesson click
@@ -250,7 +299,7 @@ export const useManualAssignments = ({
     setIsPopupOpen(false);
     setSelectedLesson(null);
     
-    addToast(`✅ تم اختيار ${teacher?.name || 'معلم'} كبديل`, 'success');
+    addToast(` تم اختيار ${teacher?.name || 'معلم'} كبديل`, 'success');
   }, [selectedLesson, employees, handleAssign, addToast]);
 
   // Handler: Swap with last period (for early dismissal)
@@ -295,7 +344,7 @@ export const useManualAssignments = ({
     setSelectedLesson(null);
     
     addToast(
-      `✅ تم تعيين ${teacher?.name || 'معلم'} مع تبديل الحصة ${selectedLesson.period} والحصة ${lastPeriod}\n` +
+      ` تم تعيين ${teacher?.name || 'معلم'} مع تبديل الحصة ${selectedLesson.period} والحصة ${lastPeriod}\n` +
       `يمكن للمعلم المغادرة بعد الحصة ${selectedLesson.period}`,
       'success'
     );
@@ -332,13 +381,13 @@ export const useManualAssignments = ({
       `بديل مع تبديل صفي - ${teacher?.name || 'معلم'} (تغطية حصة ${classSwapInfo.lastPeriod} بدلاً من ${selectedLesson.period})`
     );
 
-    console.log('✅ Assignment created successfully');
+    console.log(' Assignment created successfully');
 
     setIsPopupOpen(false);
     setSelectedLesson(null);
     
     addToast(
-      `✅ تبديل ذكي! ${teacher?.name || 'معلم'} سيغطي الحصة ${classSwapInfo.lastPeriod} (${swapTypeLabel}) بدلاً من ${selectedLesson.period}\n` +
+      ` تبديل ذكي! ${teacher?.name || 'معلم'} سيغطي الحصة ${classSwapInfo.lastPeriod} (${swapTypeLabel}) بدلاً من ${selectedLesson.period}\n` +
       `🎓 الصف ينتهي بعد حصة ${classSwapInfo.earlyDismissalPeriod}`,
       'success'
     );

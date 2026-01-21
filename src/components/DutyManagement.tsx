@@ -1383,7 +1383,7 @@ const DutyManagement: React.FC<DutyManagementProps> = ({
                       className="w-4 h-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
                     />
                     <span className="text-xs font-bold text-blue-700">
-                      {selectedTeacherIds.length === filteredTeachers.length && filteredTeachers.length > 0 ? '✅ إلغاء الكل' : '☐ اختر الكل'}
+                      {selectedTeacherIds.length === filteredTeachers.length && filteredTeachers.length > 0 ? ' إلغاء الكل' : '☐ اختر الكل'}
                       {selectedTeacherIds.length > 0 && ` (${selectedTeacherIds.length})`}
                     </span>
                   </label>
@@ -1446,7 +1446,7 @@ const DutyManagement: React.FC<DutyManagementProps> = ({
                           className="flex-1 px-2 py-1 border border-gray-300 rounded text-[10px] font-bold focus:border-blue-400 focus:outline-none"
                         >
                           <option value="">— اختر —</option>
-                          <option value="full">✅ كامل</option>
+                          <option value="full"> كامل</option>
                           <option value="partial">🔹 جزئي</option>
                         </select>
                         <button
@@ -1475,11 +1475,11 @@ const DutyManagement: React.FC<DutyManagementProps> = ({
                                 }
                               };
                             }));
-                            alert(`✅ تم تطبيق "${value === 'full' ? 'كامل' : 'جزئي'}" على ${selectedTeacherIds.length} معلم`);
+                            alert(` تم تطبيق "${value === 'full' ? 'كامل' : 'جزئي'}" على ${selectedTeacherIds.length} معلم`);
                           }}
                           className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-[10px] font-bold transition-colors"
                         >
-                          ✅ تطبيق
+                           تطبيق
                         </button>
                       </div>
                     </div>
@@ -1523,11 +1523,11 @@ const DutyManagement: React.FC<DutyManagementProps> = ({
                                 }
                               };
                             }));
-                            alert(`✅ تم تطبيق "${value === 'none' ? 'لا يوجد' : value}" على ${selectedTeacherIds.length} معلم`);
+                            alert(` تم تطبيق "${value === 'none' ? 'لا يوجد' : value}" على ${selectedTeacherIds.length} معلم`);
                           }}
                           className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-[10px] font-bold transition-colors"
                         >
-                          ✅ تطبيق
+                           تطبيق
                         </button>
                       </div>
                     </div>
@@ -1571,11 +1571,11 @@ const DutyManagement: React.FC<DutyManagementProps> = ({
                                 }
                               };
                             }));
-                            alert(`✅ تم تطبيق "${value === 'none' ? 'لا يوجد' : value}" على ${selectedTeacherIds.length} معلم`);
+                            alert(` تم تطبيق "${value === 'none' ? 'لا يوجد' : value}" على ${selectedTeacherIds.length} معلم`);
                           }}
                           className="px-3 py-1 bg-purple-500 hover:bg-purple-600 text-white rounded text-[10px] font-bold transition-colors"
                         >
-                          ✅ تطبيق
+                           تطبيق
                         </button>
                       </div>
                     </div>
@@ -1710,7 +1710,7 @@ const DutyManagement: React.FC<DutyManagementProps> = ({
                                 }}
                                 className="w-full px-2 py-1 border border-gray-300 rounded text-[10px] font-bold focus:border-blue-400 focus:outline-none"
                               >
-                                <option value="full">✅ كامل</option>
+                                <option value="full"> كامل</option>
                                 <option value="partial">🔹 جزئي</option>
                               </select>
                             </div>
@@ -1819,7 +1819,7 @@ const DutyManagement: React.FC<DutyManagementProps> = ({
                                 className="w-full px-2 py-1 border border-gray-300 rounded text-[10px] font-bold focus:border-blue-400 focus:outline-none"
                               >
                                 <option value="no">❌ لا</option>
-                                <option value="yes">✅ نعم</option>
+                                <option value="yes"> نعم</option>
                               </select>
                             </div>
                           </div>
@@ -4328,7 +4328,7 @@ const DutyManagement: React.FC<DutyManagementProps> = ({
                   onClick={handleAddFacilityType}
                   className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-bold transition-all shadow-sm"
                 >
-                  ✅ إضافة النوع
+                   إضافة النوع
                 </button>
                 <button
                   onClick={() => setShowAddTypeModal(false)}
@@ -4515,7 +4515,7 @@ const DutyManagement: React.FC<DutyManagementProps> = ({
                         }}
                         className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-bold transition-colors"
                       >
-                        ✅ تحديد الكل
+                         تحديد الكل
                       </button>
                       <button
                         onClick={() => setBreakFormData(prev => ({ ...prev, targetGrades: [] }))}
@@ -4570,7 +4570,7 @@ const DutyManagement: React.FC<DutyManagementProps> = ({
                 {/* Selected Count */}
                 {breakFormData.targetGrades.length > 0 && (
                   <p className="text-xs text-blue-600 font-bold mt-2">
-                    ✅ تم تحديد {breakFormData.targetGrades.length} صف
+                     تم تحديد {breakFormData.targetGrades.length} صف
                   </p>
                 )}
               </div>
@@ -4604,7 +4604,7 @@ const DutyManagement: React.FC<DutyManagementProps> = ({
                         }}
                         className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-bold transition-colors"
                       >
-                        ✅ تحديد الكل
+                         تحديد الكل
                       </button>
                       <button
                         onClick={() => setBreakFormData(prev => ({ ...prev, targetFloors: [] }))}
@@ -4788,7 +4788,7 @@ const DutyManagement: React.FC<DutyManagementProps> = ({
                 {/* Selected Count */}
                 {breakFormData.targetFloors.length > 0 && (
                   <p className="text-xs text-purple-600 font-bold mt-2">
-                    ✅ تم تحديد {breakFormData.targetFloors.length} مرفق
+                     تم تحديد {breakFormData.targetFloors.length} مرفق
                   </p>
                 )}
               </div>

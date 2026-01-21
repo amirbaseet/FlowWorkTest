@@ -101,7 +101,7 @@ export function getAvailableTeachers(
       continue;
     }
 
-    // ✅ CRITICAL FIX: Check if teacher has ANY lessons on this day
+    //  CRITICAL FIX: Check if teacher has ANY lessons on this day
     const hasLessonsToday = lessons.some(
       l => l.teacherId === employee.id && normalizeArabic(l.day) === normalizedDay
     );
@@ -203,7 +203,7 @@ export function getAvailableTeachers(
       continue; // Skip other categories if educator
     }
 
-    // ✅ CRITICAL FIX: If no lesson - only AVAILABLE if hasLessonsToday
+    //  CRITICAL FIX: If no lesson - only AVAILABLE if hasLessonsToday
     if (!currentLesson && hasLessonsToday) {
       availableCandidates.push({
         teacherId: employee.id,
@@ -217,7 +217,7 @@ export function getAvailableTeachers(
       continue;
     }
 
-    // ✅ NEW: If no lesson - check if on-call (in reserve pool)
+    //  NEW: If no lesson - check if on-call (in reserve pool)
     if (!currentLesson && !hasLessonsToday && reservePoolIds.includes(employee.id)) {
       onCallCandidates.push({
         teacherId: employee.id,

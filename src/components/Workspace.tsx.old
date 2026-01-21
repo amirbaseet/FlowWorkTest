@@ -78,7 +78,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
 
   // Manual selection popup state
   const [activeSlot, setActiveSlot] = useState<{ classId: string, period: number } | null>(null);
-// ✅ Available Teachers Popup State
+//  Available Teachers Popup State
 const [selectedLesson, setSelectedLesson] = useState<{
   period: number;
   classId: string;
@@ -282,7 +282,7 @@ const [isAvailableTeachersPopupOpen, setIsAvailableTeachersPopupOpen] = useState
       setSubstitutionLogs(prev => [...prev, newLog]);
     }
 
-    addToast(`✅ تم تعيين ${substituteTeacher?.name || 'معلم'} بدل ${originalTeacher?.name || 'المعلم الغائب'}`, 'success');
+    addToast(` تم تعيين ${substituteTeacher?.name || 'معلم'} بدل ${originalTeacher?.name || 'المعلم الغائب'}`, 'success');
   }, [viewDate, dayName, lessons, employees, absences, setAbsences, setSubstitutionLogs, addToast]);
 
   // Handle remove assignment
@@ -323,7 +323,7 @@ const [isAvailableTeachersPopupOpen, setIsAvailableTeachersPopupOpen] = useState
     setIsAvailableTeachersPopupOpen(false);
     setSelectedLesson(null);
     
-    addToast(`✅ تم اختيار ${teacher?.name || 'معلم'} كبديل`, 'success');
+    addToast(` تم اختيار ${teacher?.name || 'معلم'} كبديل`, 'success');
   }, [selectedLesson, employees, handleAssign, addToast]);
   // Handle lesson click to open available teachers popup
   const handleLessonClick = useCallback((lesson: any, className: string) => {
@@ -358,7 +358,7 @@ const [isAvailableTeachersPopupOpen, setIsAvailableTeachersPopupOpen] = useState
       return updated;
     });
 
-    addToast(`✅ تم توزيع ${newAssignments.length} مهمة`, 'success');
+    addToast(` تم توزيع ${newAssignments.length} مهمة`, 'success');
   };
 
   // Handle auto distribute button click (optional templateIndex for single-mode distribution)
@@ -711,7 +711,7 @@ const [isAvailableTeachersPopupOpen, setIsAvailableTeachersPopupOpen] = useState
           const slotKey = `${cls}-${period}`;
 
           if (best && best.score > 0) {
-            console.log(`✅ Selected: ${best.employee.name} (Score: ${best.score})`);
+            console.log(` Selected: ${best.employee.name} (Score: ${best.score})`);
             newDistribution[slotKey] = {
               originalTeacher: originalLesson.teacherId,
               substituteId: best.employee.id,
@@ -750,7 +750,7 @@ const [isAvailableTeachersPopupOpen, setIsAvailableTeachersPopupOpen] = useState
       handleBulkAssign(newAssignments);
     }
 
-    console.log(`✅ Live distribution: ${Object.keys(newDistribution).length} slots`);
+    console.log(` Live distribution: ${Object.keys(newDistribution).length} slots`);
     return newDistribution;
   }, [showDistribution, confirmedModes, activeDistributionIndex, engineContext, dayName, lessons, employees, classesData, viewDate, substitutionLogs]);
 
@@ -1604,7 +1604,7 @@ const [isAvailableTeachersPopupOpen, setIsAvailableTeachersPopupOpen] = useState
                                         <div className="flex flex-col items-center gap-0.5 mt-1 pt-0.5 border-t border-amber-400 bg-amber-50 rounded px-1">
                                           <span className="text-[6px] text-amber-700 font-bold">↓ بديل</span>
                                           <span className="text-[7px] font-black text-amber-900 truncate max-w-full">{localSubstitute.name.split(' ')[0]}</span>
-                                          <span className="text-[6px] text-amber-600 font-bold">✅ معيّن</span>
+                                          <span className="text-[6px] text-amber-600 font-bold"> معيّن</span>
                                         </div>
                                       ) : hasDistribution && distribution.substituteId ? (
                                         <div
@@ -1691,7 +1691,7 @@ const [isAvailableTeachersPopupOpen, setIsAvailableTeachersPopupOpen] = useState
                         <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mb-4">
                           <Check size={40} className="text-emerald-600" />
                         </div>
-                        <h3 className="text-lg font-black text-emerald-900 mb-2">✅ لا توجد فجوات!</h3>
+                        <h3 className="text-lg font-black text-emerald-900 mb-2"> لا توجد فجوات!</h3>
                         <p className="text-sm text-gray-600">جميع المعلمين متفرغين للمهمة</p>
                       </div>
                     ) : (
@@ -2009,7 +2009,7 @@ const [isAvailableTeachersPopupOpen, setIsAvailableTeachersPopupOpen] = useState
                     }));
                     setSubstitutionLogs(prev => [...prev, ...logsWithIds]);
                   }
-                  addToast('✅ تم الحفظ بنجاح', 'success');
+                  addToast(' تم الحفظ بنجاح', 'success');
                   setShowAbsenceFormModal(false);
                   setActiveProtocolStage(null);
                 }}
@@ -2036,7 +2036,7 @@ const [isAvailableTeachersPopupOpen, setIsAvailableTeachersPopupOpen] = useState
                   if (stage === 3 && data.poolIds) {
                     setLocalPoolIds(data.poolIds);
                   }
-                  addToast(`✅ تم حفظ المرحلة ${stage}`, 'success');
+                  addToast(` تم حفظ المرحلة ${stage}`, 'success');
                   setShowAbsenceFormModal(false);
                   setActiveProtocolStage(null);
                 }}

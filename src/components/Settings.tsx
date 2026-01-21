@@ -486,7 +486,7 @@ const Settings: React.FC<SettingsProps> = ({
                               })}
                               className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${scheduleConfig.morningBreak?.enabled ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-400'}`}
                            >
-                              {scheduleConfig.morningBreak?.enabled ? '✅ مفعّل' : 'معطّل'}
+                              {scheduleConfig.morningBreak?.enabled ? ' مفعّل' : 'معطّل'}
                            </button>
                         </div>
                      </div>

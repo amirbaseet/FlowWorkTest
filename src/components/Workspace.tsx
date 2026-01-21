@@ -187,7 +187,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
       });
     });
 
-    console.log('✅ [Workspace] Final currentDateAssignments:', {
+    console.log(' [Workspace] Final currentDateAssignments:', {
       totalSlots: Object.keys(result).length,
       assignments: result
     });
@@ -266,7 +266,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
           )
           .map(s => s.substituteId),
         scheduleConfig: scheduleConfig,
-        reservePoolIds: localPoolIds // ✅ NEW: Pass reserve pool IDs
+        reservePoolIds: localPoolIds //  NEW: Pass reserve pool IDs
       })
     : {
         educatorCandidates: [],
@@ -274,7 +274,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
         individualCandidates: [],
         stayCandidates: [],
         availableCandidates: [],
-        onCallCandidates: [] // ✅ NEW: Include onCallCandidates in fallback
+        onCallCandidates: [] //  NEW: Include onCallCandidates in fallback
       };
 
   const slotCandidates = manualAssignments.activeSlot
@@ -311,7 +311,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
         assignList.forEach(assign => {
           console.log('📝 Assignment reason:', assign.reason);
           if (assign.reason.includes('تبديل صفي')) {
-            console.log('✅ Found class swap!');
+            console.log(' Found class swap!');
             const match = assign.reason.match(/تغطية حصة (\d+) بدلاً من (\d+)/);
             if (match) {
               const swappedPeriod = parseInt(match[1]);
@@ -389,12 +389,12 @@ const Workspace: React.FC<WorkspaceProps> = ({
       return;
     }
 
-    console.log('✅ [Undo] Found swap log, removing:', swapLog);
+    console.log(' [Undo] Found swap log, removing:', swapLog);
     
     // 1. Remove from substitutionLogs (persistent storage)
     if (setSubstitutionLogs) {
       setSubstitutionLogs(prev => prev.filter(log => log.id !== swapLog.id));
-      console.log('✅ [Undo] Removed from substitutionLogs');
+      console.log(' [Undo] Removed from substitutionLogs');
     }
     
     // 2. Remove from manual assignments (in-memory)
@@ -404,7 +404,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
       const swapAssignment = assignmentsForKey.find(a => a.reason.includes('تبديل صفي'));
       if (swapAssignment) {
         manualAssignments.handleRemove(classId, cancelledPeriod, swapAssignment.teacherId);
-        console.log('✅ [Undo] Removed from manual assignments');
+        console.log(' [Undo] Removed from manual assignments');
       }
     }
     
@@ -418,7 +418,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
           absence.affectedPeriods?.includes(cancelledPeriod)
         ) {
           const updatedPeriods = absence.affectedPeriods.filter(p => p !== cancelledPeriod);
-          console.log('✅ [Undo] Updated absence periods:', { before: absence.affectedPeriods, after: updatedPeriods });
+          console.log(' [Undo] Updated absence periods:', { before: absence.affectedPeriods, after: updatedPeriods });
           
           // If no periods left, we could remove the absence entirely
           if (updatedPeriods.length === 0) {
@@ -436,8 +436,8 @@ const Workspace: React.FC<WorkspaceProps> = ({
       }).filter(Boolean)); // Remove null entries
     }
     
-    addToast('✅ تم التراجع عن التبديل بنجاح', 'success');
-    console.log('✅ [Undo] Undo completed successfully');
+    addToast(' تم التراجع عن التبديل بنجاح', 'success');
+    console.log(' [Undo] Undo completed successfully');
   }, [workspaceView.viewDate, substitutionLogs, setSubstitutionLogs, manualAssignments, setAbsences, addToast]);
 
   // ==========================================================================
@@ -662,8 +662,14 @@ const Workspace: React.FC<WorkspaceProps> = ({
                       <h2 className="text-[13px] font-black text-indigo-900">
                         📊 جدول التوزيع التفاعلي
                       </h2>
-                      <p className="text-[9px] text-indigo-600 font-medium">
-                        عرض شامل لجدول الحصص والغيابات
+                      <p className="text-[9px] text-indigo-600 font-medium flex items-center gap-1">
+                        <span>عرض شامل لجدول الحصص والغيابات</span>
+                        <span className="inline-flex items-center gap-0.5 px-1 py-0.5 bg-amber-100 text-amber-700 rounded text-[7px] font-bold">
+                          <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          <span>مرر فوق التعيين للتراجع</span>
+                        </span>
                       </p>
                     </div>
                   </div>
@@ -714,6 +720,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
                   isSlotVisible={workspaceFilters.isSlotVisible}
                   hasActiveFilters={workspaceFilters.hasActiveFilters}
                   onUndoClassSwap={handleUndoClassSwap}
+                  onRemoveAssignment={manualAssignments.handleRemove}
                 />
               </div>
 
@@ -747,8 +754,8 @@ const Workspace: React.FC<WorkspaceProps> = ({
           }
         }
         availableTeachers={availableTeachers}
-        activeExternalIds={localPoolIds} // ✅ NEW: Pass reserve pool IDs
-        employees={employees} // ✅ NEW: Pass employees for lookup
+        activeExternalIds={localPoolIds} //  NEW: Pass reserve pool IDs
+        employees={employees} //  NEW: Pass employees for lookup
         onSelectTeacher={(teacherId, swapWithLast, swapType, classSwapInfo) => {
           if (swapType === 'substitute-based' && swapWithLast) {
             // Handle substitute-based swap - teacher swaps their own lessons
@@ -833,7 +840,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
                     }))
                   ]);
                 }
-                addToast('✅ تم الحفظ بنجاح', 'success');
+                addToast(' تم الحفظ بنجاح', 'success');
                 setShowAbsenceFormModal(false);
               }}
               onCancel={() => setShowAbsenceFormModal(false)}
@@ -841,7 +848,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
                 if (stage === 3 && data.poolIds) {
                   setLocalPoolIds(data.poolIds);
                 }
-                addToast(`✅ تم حفظ المرحلة ${stage}`, 'success');
+                addToast(` تم حفظ المرحلة ${stage}`, 'success');
                 setShowAbsenceFormModal(false);
               }}
               onOpenRequestForm={() => {

@@ -382,7 +382,7 @@ const ManualDistributionGrid: React.FC<ManualDistributionProps> = ({
 
                 if (newAssignments.length > 0) {
                     onBulkAssign(newAssignments);
-                    addToast(`✅ تم توزيع ${newAssignments.length} مهمة باستخدام ${linkedMode.name}`, 'success');
+                    addToast(` تم توزيع ${newAssignments.length} مهمة باستخدام ${linkedMode.name}`, 'success');
                 } else {
                     addToast('⚠️ لا يوجد مرشحين مناسبين', 'warning');
                 }

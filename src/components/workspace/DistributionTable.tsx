@@ -37,6 +37,7 @@ interface DistributionTableProps {
   isSlotVisible?: (classId: string, period: number) => boolean;
   hasActiveFilters?: boolean;
   onUndoClassSwap?: (classId: string, cancelledPeriod: number) => void;
+  onRemoveAssignment?: (classId: string, period: number, teacherId: number) => void;
 }
 
 /**
@@ -62,7 +63,8 @@ const DistributionTable: React.FC<DistributionTableProps> = ({
   onLessonClick,
   isSlotVisible,
   hasActiveFilters,
-  onUndoClassSwap
+  onUndoClassSwap,
+  onRemoveAssignment
 }) => {
   const normDay = normalizeArabic(dayName);
 
@@ -87,7 +89,7 @@ const DistributionTable: React.FC<DistributionTableProps> = ({
         console.log('📝 [DistributionTable] Checking assignment:', { key, reason: assign.reason });
         // Check if reason indicates a class-based swap
         if (assign.reason.includes('تبديل صفي')) {
-          console.log('✅ [DistributionTable] Found class swap!');
+          console.log(' [DistributionTable] Found class swap!');
           // Parse: "بديل مع تبديل صفي - محمد (تغطية حصة 7 بدلاً من 2)"
           const match = assign.reason.match(/تغطية حصة (\d+) بدلاً من (\d+)/);
           if (match) {
@@ -480,12 +482,30 @@ const DistributionTable: React.FC<DistributionTableProps> = ({
                             const isClassSwap = assign.reason.includes('تبديل صفي');
                             return (
                               <div key={assign.teacherId} className="space-y-0.5">
-                                {/* Substitute name */}
-                                <div className="text-[7px] bg-emerald-100 text-emerald-900 px-1 py-0.5 rounded font-bold flex items-center gap-1">
-                                  <span>↪</span>
-                                  <span className="truncate">
-                                    {getTeacherShortName(substitute)}
-                                  </span>
+                                {/* Substitute info with undo button */}
+                                <div className="flex items-center gap-1 group/assign">
+                                  {/* Substitute name */}
+                                  <div className="flex-1 text-[7px] bg-emerald-100 text-emerald-900 px-1 py-0.5 rounded font-bold flex items-center gap-1">
+                                    <span>↪</span>
+                                    <span className="truncate">
+                                      {getTeacherShortName(substitute)}
+                                    </span>
+                                  </div>
+                                  {/* Undo button - appears on hover */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (onRemoveAssignment) {
+                                        onRemoveAssignment(cls.id, period, assign.teacherId);
+                                      }
+                                    }}
+                                    className="opacity-0 group-hover/assign:opacity-100 transition-opacity p-0.5 bg-rose-500 hover:bg-rose-600 text-white rounded text-[6px] font-bold flex items-center gap-0.5"
+                                    title="تراجع عن التعيين"
+                                  >
+                                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
                                 </div>
                                 {/* NEW: Swap Indicator for Class-Based Swaps */}
                                 {isClassSwap && (

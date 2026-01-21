@@ -167,7 +167,7 @@ const GroupAbsenceBoard: React.FC<GroupAbsenceBoardProps> = ({
         });
 
         if (assignedCount > 0) {
-            addToast(`✅ تم تفعيل المساعد لـ ${assignedCount} حصة`, 'success');
+            addToast(` تم تفعيل المساعد لـ ${assignedCount} حصة`, 'success');
         } else {
             addToast('جميع الحصص مغطاة بالفعل', 'info');
         }
@@ -839,7 +839,7 @@ const GroupAbsenceBoard: React.FC<GroupAbsenceBoardProps> = ({
                                                     return;
                                                 }
                                                 const slotKey = `${editingSlot.tid}-${editingSlot.p}`;
-                                                console.log('✅ Calling onAssign with:', slotKey, cand.emp.id);
+                                                console.log(' Calling onAssign with:', slotKey, cand.emp.id);
                                                 onAssign(slotKey, cand.emp.id);
                                                 setEditingSlot(null);
                                             }}

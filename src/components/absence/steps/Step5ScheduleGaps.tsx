@@ -91,7 +91,7 @@ export const Step5ScheduleGaps: React.FC<Step5ScheduleGapsProps> = ({
                                             <div className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-3 rounded-xl text-center">
                                                 <p className="text-xs font-black truncate">{teacher.name}</p>
                                                 <p className="text-[9px] opacity-80 mt-1">
-                                                    {isAbsent ? '🚫 غائب' : hasEvent ? '⚡ فعالية' : hasSub ? '✅ مُغطى' : '📋 متأثر'}
+                                                    {isAbsent ? '🚫 غائب' : hasEvent ? '⚡ فعالية' : hasSub ? ' مُغطى' : '📋 متأثر'}
                                                 </p>
                                             </div>
                                         </div>
