@@ -1,6 +1,6 @@
 // src/hooks/workspace/useWorkspaceMode.ts
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { ScheduleConfig, EngineContext } from '@/types';
 import { getModeMetadata } from '@/utils/modeMetadata';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -26,6 +26,11 @@ export interface UseWorkspaceModeReturn {
   removeConfirmedMode: (index: number) => void;
   setActiveDistributionIndex: (index: number | null) => void;
   setShowDistribution: (show: boolean) => void;
+  setConfirmedModes: React.Dispatch<React.SetStateAction<Array<{
+    modeId: string;
+    classes: string[];
+    periods: number[];
+  }>>>;
 }
 
 export interface UseWorkspaceModeProps {
@@ -217,6 +222,7 @@ export const useWorkspaceMode = ({
     clearSelections,
     removeConfirmedMode,
     setActiveDistributionIndex,
-    setShowDistribution
+    setShowDistribution,
+    setConfirmedModes  // Export for undo/redo
   };
 };

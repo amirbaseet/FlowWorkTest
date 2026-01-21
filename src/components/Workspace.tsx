@@ -35,6 +35,7 @@ import DistributionTable from '@/components/workspace/DistributionTable';
 import ActionBar from '@/components/workspace/ActionBar';
 import HolidayDisplay from '@/components/workspace/HolidayDisplay';
 import AvailableTeachersPopup from '@/components/workspace/AvailableTeachersPopup';
+import { UndoRedoToolbar } from '@/components/workspace/UndoRedoToolbar';
 
 // Other Components
 import AbsenceForm from './AbsenceForm';
@@ -51,6 +52,7 @@ import {
 // Utils
 import { toLocalISOString, normalizeArabic } from '@/utils';
 import { getAvailableTeachers } from '@/utils/workspace/getAvailableTeachers';
+import { useActionHistory } from '@/hooks/useActionHistory';
 
 interface WorkspaceProps {
   employees: Employee[];
@@ -77,6 +79,11 @@ const Workspace: React.FC<WorkspaceProps> = ({
   const { substitutionLogs, setSubstitutionLogs } = useSubstitutions();
   const { absences, setAbsences } = useAbsences();
   const { dailyPools } = useCoverage();
+
+  // ==========================================================================
+  // ACTION HISTORY (UNDO/REDO)
+  // ==========================================================================
+  const actionHistory = useActionHistory(addToast);
 
   // ==========================================================================
   // WORKSPACE CUSTOM HOOKS
@@ -441,6 +448,163 @@ const Workspace: React.FC<WorkspaceProps> = ({
   }, [workspaceView.viewDate, substitutionLogs, setSubstitutionLogs, manualAssignments, setAbsences, addToast]);
 
   // ==========================================================================
+  // UNDO/REDO HANDLERS
+  // ==========================================================================
+  const handleUndo = useCallback(() => {
+    const action = actionHistory.undo();
+    if (!action) return;
+
+    console.log('↶ [Workspace] Processing undo:', action.type);
+
+    // Restore state based on action type
+    switch (action.type) {
+      case 'CONFIRM_MODE':
+        // Restore previous confirmed modes state
+        if (action.beforeState.confirmedModes) {
+          workspaceMode.setConfirmedModes(action.beforeState.confirmedModes);
+        }
+        break;
+      
+      case 'REMOVE_MODE':
+        // Restore the removed mode
+        if (action.afterState.confirmedModes) {
+          workspaceMode.setConfirmedModes(action.afterState.confirmedModes);
+        }
+        break;
+
+      default:
+        console.warn('[Workspace] Unknown action type for undo:', action.type);
+    }
+
+    // Reset flag after state updates complete
+    setTimeout(() => actionHistory.resetUndoingFlag(), 0);
+  }, [actionHistory, workspaceMode]);
+
+  const handleRedo = useCallback(() => {
+    const action = actionHistory.redo();
+    if (!action) return;
+
+    console.log('↷ [Workspace] Processing redo:', action.type);
+
+    // Restore state based on action type
+    switch (action.type) {
+      case 'CONFIRM_MODE':
+        // Reapply the mode confirmation
+        if (action.afterState.confirmedModes) {
+          workspaceMode.setConfirmedModes(action.afterState.confirmedModes);
+        }
+        break;
+      
+      case 'REMOVE_MODE':
+        // Re-remove the mode
+        if (action.beforeState.confirmedModes) {
+          workspaceMode.setConfirmedModes(action.beforeState.confirmedModes);
+        }
+        break;
+
+      default:
+        console.warn('[Workspace] Unknown action type for redo:', action.type);
+    }
+
+    // Reset flag after state updates complete
+    setTimeout(() => actionHistory.resetUndoingFlag(), 0);
+  }, [actionHistory, workspaceMode]);
+
+  // Wrap mode confirmation to record action
+  const handleConfirmModeWithHistory = useCallback(() => {
+    const beforeState = {
+      confirmedModes: [...workspaceMode.confirmedModes]
+    };
+
+    const modeToConfirm = workspaceMode.selectedMode;
+    const classCount = workspaceMode.selectedClasses.length;
+    const periodCount = workspaceMode.selectedPeriods.length;
+
+    // Call original handler
+    workspaceMode.handleConfirmMode();
+
+    // Record action after state change (with small delay to capture new state)
+    setTimeout(() => {
+      const afterState = {
+        confirmedModes: [...workspaceMode.confirmedModes]
+      };
+
+      actionHistory.recordAction({
+        type: 'CONFIRM_MODE',
+        description: `تثبيت نمط: ${modeToConfirm}`,
+        beforeState,
+        afterState,
+        metadata: {
+          modeId: modeToConfirm,
+          classCount,
+          periodCount
+        }
+      });
+
+      console.log('✅ [Workspace] Action recorded:', {
+        type: 'CONFIRM_MODE',
+        modeId: modeToConfirm,
+        before: beforeState.confirmedModes.length,
+        after: afterState.confirmedModes.length
+      });
+    }, 150);
+  }, [workspaceMode, actionHistory]);
+
+  // Wrap remove mode to record action
+  const handleRemoveModeWithHistory = useCallback((index: number) => {
+    const beforeState = {
+      confirmedModes: workspaceMode.confirmedModes
+    };
+
+    const removedMode = workspaceMode.confirmedModes[index];
+
+    // Call original handler
+    workspaceMode.removeConfirmedMode(index);
+
+    // Record action
+    setTimeout(() => {
+      actionHistory.recordAction({
+        type: 'REMOVE_MODE',
+        description: `إزالة نمط: ${removedMode.modeId}`,
+        beforeState,
+        afterState: {
+          confirmedModes: workspaceMode.confirmedModes
+        },
+        metadata: {
+          modeId: removedMode.modeId,
+          index
+        }
+      });
+    }, 100);
+  }, [workspaceMode, actionHistory]);
+
+  // ==========================================================================
+  // KEYBOARD SHORTCUTS
+  // ==========================================================================
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Z or Cmd+Z: Undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      }
+      // Ctrl+Shift+Z or Cmd+Shift+Z: Redo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        handleRedo();
+      }
+      // Ctrl+Y or Cmd+Y: Redo (alternative)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo]);
+
+  // ==========================================================================
   // RENDER
   // ==========================================================================
   return (
@@ -449,6 +613,16 @@ const Workspace: React.FC<WorkspaceProps> = ({
       dir="rtl"
     >
       <WorkspaceHeader />
+      
+      {/* Undo/Redo Toolbar */}
+      <UndoRedoToolbar
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        canUndo={actionHistory.canUndo}
+        canRedo={actionHistory.canRedo}
+        undoCount={actionHistory.undoCount}
+        redoCount={actionHistory.redoCount}
+      />
       
       <DateNavigator
         viewDate={workspaceView.viewDate}
@@ -732,7 +906,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
                 selectedMode={workspaceMode.selectedMode}
                 canConfirm={workspaceMode.canConfirm}
                 showDistribution={workspaceMode.showDistribution}
-                onConfirmMode={workspaceMode.handleConfirmMode}
+                onConfirmMode={handleConfirmModeWithHistory}
                 onSaveToCalendar={modals.openSaveModal}
                 onReset={handleReset}
               />
